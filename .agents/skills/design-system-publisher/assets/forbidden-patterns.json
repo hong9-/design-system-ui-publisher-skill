@@ -1,0 +1,24 @@
+{
+  "rawColorRegexes": [
+    "#[0-9a-fA-F]{3,8}",
+    "\\brgba?\\(",
+    "\\bhsla?\\("
+  ],
+  "rawSizeRegexes": [
+    "\\b(?:padding|margin|gap|borderRadius|fontSize|lineHeight|width|height)\\s*:\\s*[0-9]+(?:px)?\\b"
+  ],
+  "forbiddenImportsInProductScreens": [
+    "react-native#View",
+    "react-native#Text",
+    "react-native#Pressable"
+  ],
+  "forbiddenTagsInProductScreens": [
+    "div",
+    "span",
+    "button"
+  ],
+  "forbiddenComments": [
+    "eslint-disable.*design",
+    "@ts-ignore.*design"
+  ]
+}

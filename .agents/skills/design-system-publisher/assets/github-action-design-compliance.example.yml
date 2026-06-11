@@ -1,0 +1,24 @@
+name: Design Compliance
+
+on:
+  pull_request:
+
+jobs:
+  design-compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck --if-present
+      - run: pnpm lint --if-present
+      - run: pnpm ds:validate-contract --if-present
+      - run: pnpm ds:scan-raw-styles --if-present
+      - run: pnpm test --if-present
+      - run: pnpm ds:compliance-report --if-present

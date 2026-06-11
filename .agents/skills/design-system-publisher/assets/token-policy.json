@@ -1,0 +1,46 @@
+{
+  "allowedLayersInProductCode": [
+    "semantic",
+    "component"
+  ],
+  "disallowedLayersInProductCode": [
+    "primitive"
+  ],
+  "rawValuesForbidden": {
+    "colors": [
+      "hex",
+      "rgb",
+      "rgba",
+      "hsl",
+      "named-css-colors"
+    ],
+    "spacing": "arbitrary numeric values not in the token scale",
+    "typography": "arbitrary fontSize, lineHeight, letterSpacing, fontWeight values",
+    "radius": "arbitrary border radius values",
+    "shadow": "raw shadow objects or box-shadow strings outside token package"
+  },
+  "allowedTokenPrefixes": [
+    "color.bg",
+    "color.text",
+    "color.border",
+    "color.action",
+    "space",
+    "radius",
+    "font",
+    "shadow",
+    "motion",
+    "button",
+    "input",
+    "card",
+    "modal"
+  ],
+  "naming": {
+    "separator": ".",
+    "case": "lowerCamel or kebab converted to dot notation",
+    "examples": [
+      "color.bg.surface",
+      "button.primary.bg.default",
+      "space.md"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+task:
+  type: create-component
+  target:
+    - web
+    - native
+
+component:
+  name: ExampleCard
+  purpose: 주요 정보를 카드 형태로 표시한다
+  sourceSpec: .design-system/component-spec.json
+
+props:
+  variant:
+    - default
+    - elevated
+  size:
+    - md
+  state:
+    - default
+    - loading
+    - error
+
+slots:
+  - header
+  - title
+  - description
+  - actions
+
+constraints:
+  shareTypesAcrossPlatforms: true
+  splitImplementationByPlatform: true
+  useOnlyExistingTokens: true
+  noRawStyles: true
+  requireStories: true
+  requireComplianceReport: true

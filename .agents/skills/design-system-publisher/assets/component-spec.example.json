@@ -1,0 +1,133 @@
+{
+  "$schema": "./component-spec.schema.json",
+  "components": {
+    "Button": {
+      "status": "stable",
+      "purpose": "Trigger a user action",
+      "props": {
+        "variant": [
+          "primary",
+          "secondary",
+          "danger",
+          "ghost"
+        ],
+        "size": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "disabled": "boolean",
+        "loading": "boolean"
+      },
+      "defaults": {
+        "variant": "primary",
+        "size": "md"
+      },
+      "slots": [
+        "leadingIcon",
+        "children",
+        "trailingIcon"
+      ],
+      "states": [
+        "default",
+        "hover",
+        "pressed",
+        "focused",
+        "disabled",
+        "loading"
+      ],
+      "accessibility": {
+        "iconOnlyRequiresLabel": true,
+        "loadingDisablesInteraction": true
+      },
+      "tokens": [
+        "button.primary.bg.default",
+        "button.primary.bg.pressed",
+        "button.primary.text.default",
+        "button.md.height",
+        "button.md.paddingX"
+      ]
+    },
+    "TextField": {
+      "status": "stable",
+      "purpose": "Collect text input",
+      "props": {
+        "size": [
+          "sm",
+          "md",
+          "lg"
+        ],
+        "state": [
+          "default",
+          "error",
+          "disabled"
+        ],
+        "label": "string",
+        "helperText": "string",
+        "errorText": "string"
+      },
+      "slots": [
+        "label",
+        "leadingIcon",
+        "input",
+        "trailingIcon",
+        "helperText",
+        "errorText"
+      ],
+      "states": [
+        "default",
+        "focused",
+        "error",
+        "disabled"
+      ],
+      "accessibility": {
+        "labelRequired": true,
+        "errorTextAssociatedWithField": true
+      }
+    },
+    "EmptyState": {
+      "status": "stable",
+      "purpose": "Explain that there is no data and optionally provide an action",
+      "props": {
+        "title": "string",
+        "description": "string",
+        "action": "ReactNode"
+      },
+      "slots": [
+        "illustration",
+        "title",
+        "description",
+        "action"
+      ],
+      "states": [
+        "empty"
+      ],
+      "accessibility": {
+        "titleRequired": true,
+        "actionLabelRequiredWhenActionExists": true
+      }
+    },
+    "ErrorState": {
+      "status": "stable",
+      "purpose": "Explain a recoverable failure and provide a retry action when possible",
+      "props": {
+        "title": "string",
+        "description": "string",
+        "action": "ReactNode"
+      },
+      "slots": [
+        "icon",
+        "title",
+        "description",
+        "action"
+      ],
+      "states": [
+        "error"
+      ],
+      "accessibility": {
+        "titleRequired": true,
+        "retryActionLabelRequiredWhenRecoverable": true
+      }
+    }
+  }
+}

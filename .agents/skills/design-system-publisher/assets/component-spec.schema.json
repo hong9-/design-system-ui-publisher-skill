@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Design System Component Spec",
+  "type": "object",
+  "required": [
+    "components"
+  ],
+  "properties": {
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "status",
+          "purpose",
+          "props",
+          "slots"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "stable",
+              "deprecated"
+            ]
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "props": {
+            "type": "object"
+          },
+          "defaults": {
+            "type": "object"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "states": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "accessibility": {
+            "type": "object"
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

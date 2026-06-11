@@ -1,0 +1,145 @@
+{
+  "recipes": {
+    "list-screen": {
+      "purpose": "Display a collection of entities",
+      "requiredSections": [
+        "Header",
+        "ContentList",
+        "LoadingState",
+        "EmptyState",
+        "ErrorState"
+      ],
+      "optionalSections": [
+        "FilterBar",
+        "Pagination",
+        "ActionBar"
+      ],
+      "requiredStates": [
+        "loading",
+        "empty",
+        "error",
+        "success"
+      ],
+      "layout": {
+        "root": "Screen",
+        "body": "Stack",
+        "sectionGap": "xl",
+        "contentGap": "md"
+      },
+      "rules": [
+        "Header must contain the screen title",
+        "EmptyState must explain why no data is visible",
+        "ErrorState must include retry action when the failure is recoverable"
+      ]
+    },
+    "form-screen": {
+      "purpose": "Collect or edit user input",
+      "requiredSections": [
+        "Header",
+        "FormGroup",
+        "ActionBar"
+      ],
+      "optionalSections": [
+        "Description",
+        "InlineNotice"
+      ],
+      "requiredStates": [
+        "default",
+        "dirty",
+        "submitting",
+        "success",
+        "error"
+      ],
+      "layout": {
+        "root": "Screen",
+        "body": "Stack",
+        "fieldGap": "md",
+        "sectionGap": "xl"
+      },
+      "rules": [
+        "Each field must have a label",
+        "Field errors must appear near the field",
+        "Submitting must prevent duplicate submission"
+      ]
+    },
+    "detail-screen": {
+      "purpose": "Display a single entity",
+      "requiredSections": [
+        "Header",
+        "Metadata",
+        "Content"
+      ],
+      "optionalSections": [
+        "ActionGroup",
+        "RelatedList"
+      ],
+      "requiredStates": [
+        "loading",
+        "error",
+        "success"
+      ],
+      "layout": {
+        "root": "Screen",
+        "body": "Stack",
+        "sectionGap": "xl"
+      }
+    },
+    "auth-screen": {
+      "purpose": "Authenticate or verify a user",
+      "extends": "form-screen",
+      "requiredStates": [
+        "default",
+        "submitting",
+        "error",
+        "success"
+      ],
+      "rules": [
+        "Provide clear recovery actions for auth failures"
+      ]
+    },
+    "settings-screen": {
+      "purpose": "Configure account or product preferences",
+      "requiredSections": [
+        "Header",
+        "SettingsGroup"
+      ],
+      "optionalSections": [
+        "DangerZone"
+      ],
+      "requiredStates": [
+        "loading",
+        "error",
+        "success"
+      ],
+      "layout": {
+        "root": "Screen",
+        "body": "Stack",
+        "sectionGap": "xl"
+      }
+    },
+    "dashboard-screen": {
+      "purpose": "Show multiple summary regions",
+      "requiredSections": [
+        "Header",
+        "SummaryCards"
+      ],
+      "optionalSections": [
+        "ChartRegion",
+        "RecentActivity",
+        "ActionGroup"
+      ],
+      "requiredStates": [
+        "loading",
+        "empty",
+        "error",
+        "success"
+      ],
+      "layout": {
+        "root": "Screen",
+        "body": "GridOrStack",
+        "sectionGap": "xl",
+        "cardGap": "md"
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "$schema": "./design-system-manifest.schema.json",
+  "version": "0.1.0",
+  "sources": {
+    "figma": {
+      "mode": "export-or-api",
+      "variables": "Figma Variables are normalized into tokens before code use",
+      "components": "Figma component properties become component specs",
+      "layers": "Meaningful layers become slot hints"
+    }
+  },
+  "packages": {
+    "tokens": "@my/design-tokens",
+    "ui": "@my/ui",
+    "contract": "@my/design-contract"
+  },
+  "tokenLayers": [
+    "primitive",
+    "semantic",
+    "component"
+  ],
+  "platforms": [
+    "web",
+    "native"
+  ],
+  "requiredChecks": [
+    "typecheck",
+    "lint",
+    "ds:validate-contract",
+    "ds:scan-raw-styles",
+    "test",
+    "ds:compliance-report"
+  ]
+}
