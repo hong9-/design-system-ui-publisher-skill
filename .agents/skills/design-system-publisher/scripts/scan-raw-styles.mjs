@@ -130,6 +130,7 @@ function isProductFile(file) {
 
 function walk(target) {
   const full = path.resolve(target);
+  if (!isInsidePath(full, cwd)) failUsage(`scan root must stay inside the repo: ${target}`);
   if (!fs.existsSync(full)) return;
   const stat = fs.statSync(full);
   if (stat.isDirectory()) {

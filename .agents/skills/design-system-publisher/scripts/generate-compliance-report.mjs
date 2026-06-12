@@ -63,6 +63,19 @@ function exists(p) {
   return fs.existsSync(path.join(cwd, p));
 }
 
+function isInsideRepo(resolvedPath) {
+  const relative = path.relative(cwd, resolvedPath);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function resolveOutputPath(value) {
+  const resolved = path.resolve(cwd, value);
+  if (!isInsideRepo(resolved)) {
+    failUsage(`--out must stay inside the repo: ${value}`);
+  }
+  return resolved;
+}
+
 function readPackageJson() {
   const packagePath = path.join(cwd, 'package.json');
   if (!fs.existsSync(packagePath)) return null;
@@ -319,7 +332,7 @@ ${checks.filter((check) => !check.skipped).map((check) => check.command).join('\
 - None, or list deviations with rationale and follow-up.
 `;
 
-const outPath = path.isAbsolute(out) ? out : path.join(cwd, out);
+const outPath = resolveOutputPath(out);
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, report, 'utf8');
 console.log(`Wrote ${path.relative(cwd, outPath) || outPath}`);
