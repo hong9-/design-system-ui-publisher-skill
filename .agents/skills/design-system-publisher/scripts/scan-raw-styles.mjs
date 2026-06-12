@@ -61,8 +61,10 @@ const nativeRules = readRules('platform-rules.react-native.json');
 const tokenPolicy = readRepoOrAssetJson('.design-system/token-policy.json', 'token-policy.json') || {};
 const componentSpec = readRepoOrAssetJson('.design-system/component-spec.json', 'component-spec.example.json') || {};
 const manifest = readRepoOrAssetJson('.design-system/design-system-manifest.json', 'design-system-manifest.example.json') || {};
+const packageJson = readJsonIfExists(path.join(cwd, 'package.json')) || {};
 const ignoredDirs = new Set(commonRules.ignoredDirs);
 const ignoredPathIncludes = commonRules.ignoredPathIncludes || [];
+const dynamicIgnoredPaths = collectDynamicIgnoredPaths();
 const exts = new Set(commonRules.extensions);
 
 function compileRules(rules) {
@@ -118,7 +120,12 @@ const shouldEnforceKnownTokenNames = knownTokens.enforceExact;
 
 function isProductFile(file) {
   const normalized = file.split(path.sep).join('/');
-  return !ignoredPathIncludes.some((ignored) => normalized.includes(ignored));
+  const resolved = path.normalize(path.resolve(file));
+  return (
+    !ignoredPathIncludes.some((ignored) => normalized.includes(ignored)) &&
+    !dynamicIgnoredPaths.files.has(resolved) &&
+    ![...dynamicIgnoredPaths.dirs].some((ignoredDir) => isInsidePath(resolved, ignoredDir))
+  );
 }
 
 function walk(target) {
@@ -223,6 +230,57 @@ function resolveRepoRelativePath(value) {
   const relative = path.relative(cwd, resolved);
   if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
   return resolved;
+}
+
+function isInsidePath(file, directory) {
+  const relative = path.relative(directory, file);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function packageDependencySpec(packageName) {
+  if (typeof packageName !== 'string' || !packageName.trim()) return null;
+  const dependencyGroups = [
+    packageJson.dependencies,
+    packageJson.devDependencies,
+    packageJson.peerDependencies,
+    packageJson.optionalDependencies,
+  ];
+  for (const dependencies of dependencyGroups) {
+    if (isPlainObject(dependencies) && typeof dependencies[packageName] === 'string') {
+      return dependencies[packageName];
+    }
+  }
+  return null;
+}
+
+function addRepoRelativeDir(out, value) {
+  const resolved = resolveRepoRelativePath(value);
+  if (resolved) out.add(path.normalize(resolved));
+}
+
+function addRepoRelativeFile(out, value) {
+  const resolved = resolveRepoRelativePath(value);
+  if (resolved) out.add(path.normalize(resolved));
+}
+
+function addFileDependencyDir(out, packageName) {
+  const spec = packageDependencySpec(packageName);
+  if (!spec?.startsWith('file:')) return;
+  addRepoRelativeDir(out, spec.slice('file:'.length));
+}
+
+function collectDynamicIgnoredPaths() {
+  const dirs = new Set();
+  const files = new Set();
+
+  addFileDependencyDir(dirs, manifest?.packages?.ui);
+  addFileDependencyDir(dirs, manifest?.packages?.tokens);
+
+  for (const outputPath of Object.values(manifest?.sources?.tokens?.outputs || {})) {
+    addRepoRelativeFile(files, outputPath);
+  }
+
+  return { dirs, files };
 }
 
 function collectKnownTokenNames() {

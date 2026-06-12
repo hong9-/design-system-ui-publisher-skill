@@ -139,6 +139,13 @@ const requiredChecks = new Set(
     ? manifestForChecks.requiredChecks.filter((check) => typeof check === 'string' && check.trim())
     : []
 );
+const builtInDesignChecks = new Set([
+  'ds:validate-contract',
+  'ds:scan-raw-styles',
+  'ds:compliance-report',
+]);
+const defaultPackageChecks = ['typecheck', 'lint', 'test'];
+const optionalPackageChecks = ['test:a11y', 'test:e2e:a11y', 'test:visual', 'storybook:build'];
 
 function isRequiredCheck(name) {
   return requiredChecks.has(name);
@@ -169,7 +176,18 @@ function addPackageScriptCheck(scriptName) {
   }
 }
 
-for (const scriptName of ['typecheck', 'lint', 'test']) addPackageScriptCheck(scriptName);
+function collectPackageChecks() {
+  const scriptNames = new Set(defaultPackageChecks);
+  for (const requiredCheck of requiredChecks) {
+    if (!builtInDesignChecks.has(requiredCheck)) scriptNames.add(requiredCheck);
+  }
+  for (const optionalCheck of optionalPackageChecks) {
+    if (packageScripts[optionalCheck]) scriptNames.add(optionalCheck);
+  }
+  return scriptNames;
+}
+
+for (const scriptName of collectPackageChecks()) addPackageScriptCheck(scriptName);
 
 if (runChecks) {
   const validationArgs = [
@@ -203,6 +221,11 @@ if (runChecks) {
 function statusLabel(check) {
   if (check.skipped) return 'SKIP';
   return check.status === 0 ? 'PASS' : 'FAIL';
+}
+
+function statusFor(names) {
+  const check = names.map((name) => checks.find((candidate) => candidate.name === name)).find(Boolean);
+  return check ? statusLabel(check) : 'TODO';
 }
 
 function formatCheck(check) {
@@ -287,9 +310,9 @@ ${checks.filter((check) => !check.skipped).map((check) => check.command).join('\
 - Lint: ${statusLabel(checks.find((check) => check.name === 'lint'))}
 - Design contract validation: ${statusLabel(checks.find((check) => check.name === 'design contract validation'))}
 - Design source scan: ${statusLabel(checks.find((check) => check.name === 'design source scan'))}
-- Unit/component tests: TODO
-- Accessibility tests: TODO
-- Visual tests: TODO
+- Unit/component tests: ${statusLabel(checks.find((check) => check.name === 'test'))}
+- Accessibility tests: ${statusFor(['test:a11y', 'test:e2e:a11y'])}
+- Visual tests: ${statusFor(['test:visual', 'storybook:build'])}
 
 ## Deviations
 
