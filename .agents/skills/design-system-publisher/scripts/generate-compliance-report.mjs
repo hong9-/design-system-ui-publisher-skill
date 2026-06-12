@@ -13,31 +13,50 @@ let out = 'design-compliance-report.generated.md';
 let platform = 'all';
 let allowFallback = false;
 let runChecks = false;
+let requireTokenSource = false;
+let requireTokenArtifacts = false;
+
+function failUsage(message) {
+  console.error(`ERROR ${message}`);
+  process.exit(2);
+}
 
 for (let i = 0; i < rawArgs.length; i += 1) {
   const arg = rawArgs[i];
   if (arg === '--platform') {
-    platform = rawArgs[i + 1] || platform;
+    if (!rawArgs[i + 1] || rawArgs[i + 1].startsWith('--')) failUsage('--platform requires a value');
+    platform = rawArgs[i + 1];
     i += 1;
   } else if (arg.startsWith('--platform=')) {
     platform = arg.slice('--platform='.length);
   } else if (arg === '--allow-fallback' || arg === '--init') {
     allowFallback = true;
+  } else if (arg === '--require-token-source') {
+    requireTokenSource = true;
+  } else if (arg === '--require-token-artifacts') {
+    requireTokenArtifacts = true;
   } else if (arg === '--run-checks') {
     runChecks = true;
   } else if (arg === '--no-run-checks') {
     runChecks = false;
   } else if (arg === '--out') {
-    out = rawArgs[i + 1] || out;
+    if (!rawArgs[i + 1] || rawArgs[i + 1].startsWith('--')) failUsage('--out requires a value');
+    out = rawArgs[i + 1];
     i += 1;
   } else if (!arg.startsWith('--')) {
+    if (out !== 'design-compliance-report.generated.md') failUsage(`unexpected positional argument "${arg}"`);
     out = arg;
+  } else {
+    failUsage(`unknown option "${arg}"`);
   }
 }
 
 if (!['all', 'web', 'native'].includes(platform)) {
-  console.error(`Invalid --platform "${platform}". Expected web, native, or all.`);
-  process.exit(2);
+  failUsage(`invalid --platform "${platform}". Expected web, native, or all.`);
+}
+
+if (!runChecks && (requireTokenSource || requireTokenArtifacts)) {
+  failUsage('--require-token-source and --require-token-artifacts require --run-checks because report-only mode does not execute validation');
 }
 
 function exists(p) {
@@ -117,13 +136,17 @@ function addPackageScriptCheck(scriptName) {
 for (const scriptName of ['typecheck', 'lint', 'test']) addPackageScriptCheck(scriptName);
 
 if (runChecks) {
+  const validationArgs = [
+    path.join(scriptDir, 'validate-design-contract.mjs'),
+    ...(allowFallback ? ['--allow-fallback'] : []),
+    ...(requireTokenSource ? ['--require-token-source'] : []),
+    ...(requireTokenArtifacts ? ['--require-token-artifacts'] : []),
+  ];
+
   checks.push(runCheck(
     'design contract validation',
     'node',
-    [
-      path.join(scriptDir, 'validate-design-contract.mjs'),
-      ...(allowFallback ? ['--allow-fallback'] : []),
-    ]
+    validationArgs
   ));
 
   checks.push(runCheck(

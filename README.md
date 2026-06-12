@@ -46,12 +46,14 @@ Add equivalents of these package-manager-agnostic scripts to your repo when read
     "ds:scan-raw-styles": "node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all",
     "ds:compliance-report": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs",
     "ds:compliance-report:run-checks": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks",
-    "ds:check": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks"
+    "ds:check": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts"
   }
 }
 ```
 
-`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. `ds:compliance-report` is report-only by default; use `ds:check` or `ds:compliance-report:run-checks` when you want the report generator to execute checks. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
+`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. `ds:compliance-report` is report-only by default; use `ds:check` when CI should execute checks and hard-fail on missing token source/config/artifacts. Use `ds:compliance-report:run-checks` for local orchestration before token artifacts are committed. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
+
+`--platform all` auto-routes platform-specific scan rules by file path, extension, and React Native imports. Use `--platform web` or `--platform native` when scanning a known single-platform root.
 
 ## How to use with Codex
 

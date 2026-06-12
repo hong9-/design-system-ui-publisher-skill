@@ -9,21 +9,28 @@ const rawArgs = process.argv.slice(2);
 const roots = [];
 let platform = 'all';
 
+function failUsage(message) {
+  console.error(`ERROR ${message}`);
+  process.exit(2);
+}
+
 for (let i = 0; i < rawArgs.length; i += 1) {
   const arg = rawArgs[i];
   if (arg === '--platform') {
-    platform = rawArgs[i + 1] || platform;
+    if (!rawArgs[i + 1] || rawArgs[i + 1].startsWith('--')) failUsage('--platform requires a value');
+    platform = rawArgs[i + 1];
     i += 1;
   } else if (arg.startsWith('--platform=')) {
     platform = arg.slice('--platform='.length);
+  } else if (arg.startsWith('--')) {
+    failUsage(`unknown option "${arg}"`);
   } else {
     roots.push(arg);
   }
 }
 
 if (!['all', 'web', 'native'].includes(platform)) {
-  console.error(`Invalid --platform "${platform}". Expected web, native, or all.`);
-  process.exit(2);
+  failUsage(`invalid --platform "${platform}". Expected web, native, or all.`);
 }
 
 if (roots.length === 0) roots.push('.');
@@ -36,19 +43,27 @@ function readRules(fileName) {
 }
 
 const commonRules = readRules('platform-rules.common.json');
-const webRules = platform === 'web' || platform === 'all' ? readRules('platform-rules.react-web.json') : null;
-const nativeRules = platform === 'native' || platform === 'all' ? readRules('platform-rules.react-native.json') : null;
+const webRules = readRules('platform-rules.react-web.json');
+const nativeRules = readRules('platform-rules.react-native.json');
 const ignoredDirs = new Set(commonRules.ignoredDirs);
 const ignoredPathIncludes = commonRules.ignoredPathIncludes || [];
 const exts = new Set(commonRules.extensions);
-const patternRules = [
-  ...(commonRules.patterns || []),
-  ...((webRules && webRules.patterns) || []),
-  ...((nativeRules && nativeRules.patterns) || []),
-].map((rule) => ({
-  type: rule.type,
-  regex: new RegExp(rule.regex, 'g'),
-}));
+
+function compileRules(rules) {
+  return (rules || []).map((rule) => ({
+    type: rule.type,
+    regex: new RegExp(rule.regex, 'g'),
+  }));
+}
+
+const commonPatternRules = compileRules(commonRules.patterns);
+const webPatternRules = compileRules(webRules.patterns);
+const nativePatternRules = compileRules(nativeRules.patterns);
+const reactNativeImportRegex = /\b(?:from\s*['"]react-native['"]|require\(['"]react-native['"]\))/;
+const nativePathRegex = /(?:^|\/)(?:apps\/)?(?:mobile|native|react-native|expo)(?:\/|$)|(?:^|\/)rn(?:\/|$)|\.native\.[^.]+$/;
+const webPathRegex = /(?:^|\/)(?:apps\/)?(?:web|frontend|browser)(?:\/|$)|\.web\.[^.]+$/;
+const jsxExtensions = new Set(['.jsx', '.tsx']);
+const stylesheetExtensions = new Set(['.css', '.scss']);
 
 function isProductFile(file) {
   const normalized = file.split(path.sep).join('/');
@@ -95,7 +110,7 @@ function lineFromIndex(text, index) {
 }
 
 function parseReactNativeImportLocals(text) {
-  const forbidden = new Set(nativeRules?.reactNativeForbiddenImports || []);
+  const forbidden = new Set(nativeRules.reactNativeForbiddenImports || []);
   const locals = new Set();
   const namespaces = new Set();
   const namedImport = /import\s*\{([\s\S]*?)\}\s*from\s*['"]react-native['"]/g;
@@ -122,7 +137,6 @@ function parseReactNativeImportLocals(text) {
 }
 
 function scanReactNativePrimitives(file, text) {
-  if (!nativeRules) return;
   const forbidden = nativeRules.reactNativeForbiddenImports || [];
   const { locals, namespaces } = parseReactNativeImportLocals(text);
 
@@ -154,12 +168,34 @@ function scanReactNativePrimitives(file, text) {
   }
 }
 
+function inferPlatforms(file, text) {
+  if (platform !== 'all') return new Set([platform]);
+
+  const normalized = path.relative(process.cwd(), file).split(path.sep).join('/');
+  const ext = path.extname(file);
+  const inferred = new Set();
+
+  if (stylesheetExtensions.has(ext) || webPathRegex.test(normalized)) inferred.add('web');
+  if (nativePathRegex.test(normalized) || reactNativeImportRegex.test(text)) inferred.add('native');
+
+  if (inferred.size === 0 && jsxExtensions.has(ext)) inferred.add('web');
+
+  return inferred;
+}
+
 function scanFile(file) {
   const text = fs.readFileSync(file, 'utf8');
-  for (const pattern of patternRules) {
+  const filePlatforms = inferPlatforms(file, text);
+  const activePatternRules = [
+    ...commonPatternRules,
+    ...(filePlatforms.has('web') ? webPatternRules : []),
+    ...(filePlatforms.has('native') ? nativePatternRules : []),
+  ];
+
+  for (const pattern of activePatternRules) {
     addMatches(file, pattern.type, pattern.regex, text);
   }
-  scanReactNativePrimitives(file, text);
+  if (filePlatforms.has('native')) scanReactNativePrimitives(file, text);
 }
 
 for (const root of roots) walk(root);

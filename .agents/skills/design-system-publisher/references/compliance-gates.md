@@ -70,6 +70,8 @@ Platform rule modules:
 - web: direct DOM primitives and arbitrary class utilities
 - native: direct `react-native` visual primitive imports, `className`, and web CSS variable usage
 
+With `--platform all`, common rules run for every scanned product file and web/native-specific rules are auto-routed by path, extension, and React Native imports. Use explicit `--platform web` or `--platform native` for known single-platform roots.
+
 ## Gate 3: Type/lint/test
 
 Run repo-standard checks:
@@ -94,6 +96,12 @@ The report generator is report-only by default. To use it as a single local orch
 
 ```bash
 node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks
+```
+
+For CI, make token source, token config, and generated token artifacts hard failures:
+
+```bash
+node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts
 ```
 
 ## Gate 4: Accessibility

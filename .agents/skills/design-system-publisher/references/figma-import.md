@@ -88,7 +88,7 @@ node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
 node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all
 ```
 
-When generated token artifacts are expected to be present, add `--require-token-artifacts`.
+When generated token artifacts are expected to be present, add `--require-token-artifacts`. To generate a report and enforce the same token gates through one command, run `generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts`.
 
 The final report must state:
 

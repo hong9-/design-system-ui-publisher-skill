@@ -68,28 +68,11 @@ jobs:
             esac
           }
 
-          run_optional_script() {
-            local script="$1"
-            if has_script "$script"; then
-              run_script "$script"
-            else
-              echo "Skipping missing package script: $script"
-            fi
-          }
-
-          run_required_script_or_node() {
-            local script="$1"
-            shift
-            if has_script "$script"; then
-              run_script "$script"
-            else
-              node "$@"
-            fi
-          }
-
-          run_optional_script typecheck
-          run_optional_script lint
-          run_required_script_or_node ds:validate-contract .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
-          run_required_script_or_node ds:scan-raw-styles .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all
-          run_optional_script test
-          run_required_script_or_node ds:compliance-report .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs
+          if has_script ds:check; then
+            run_script ds:check
+          else
+            node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs \
+              --run-checks \
+              --require-token-source \
+              --require-token-artifacts
+          fi

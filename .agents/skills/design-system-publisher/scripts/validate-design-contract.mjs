@@ -6,7 +6,23 @@ import { fileURLToPath } from 'node:url';
 const cwd = process.cwd();
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(scriptDir, '..');
-const args = new Set(process.argv.slice(2));
+const rawArgs = process.argv.slice(2);
+const validArgs = new Set([
+  '--allow-fallback',
+  '--init',
+  '--check-examples',
+  '--require-token-source',
+  '--require-token-artifacts',
+]);
+
+for (const arg of rawArgs) {
+  if (!validArgs.has(arg)) {
+    console.error(`ERROR unknown option "${arg}"`);
+    process.exit(2);
+  }
+}
+
+const args = new Set(rawArgs);
 const allowFallback = args.has('--allow-fallback') || args.has('--init') || args.has('--check-examples');
 const requireTokenSource = args.has('--require-token-source');
 const requireTokenArtifacts = args.has('--require-token-artifacts');
@@ -114,18 +130,34 @@ function tokenMatchesPrefix(token, prefix) {
   return token === prefix || token.startsWith(`${prefix}.`);
 }
 
-function resolveRepoPath(value) {
-  if (!isNonEmptyString(value)) return null;
-  return path.isAbsolute(value) ? value : path.join(cwd, value);
+function isInsideRepo(resolvedPath) {
+  const relative = path.relative(cwd, resolvedPath);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
-function pathExistsFromRepo(value) {
-  const resolved = resolveRepoPath(value);
+function resolveRepoPath(value, label) {
+  if (!isNonEmptyString(value)) return null;
+  if (path.isAbsolute(value)) {
+    errors.push(`${label} must be a repo-relative path, not an absolute path: ${value}`);
+    return null;
+  }
+  const resolved = path.resolve(cwd, value);
+  if (!isInsideRepo(resolved)) {
+    errors.push(`${label} must stay inside the repo: ${value}`);
+    return null;
+  }
+  return resolved;
+}
+
+function pathExistsFromRepo(value, label) {
+  const resolved = resolveRepoPath(value, label);
   return Boolean(resolved && fs.existsSync(resolved));
 }
 
-function assertOrWarnFileExists(value, message, required) {
-  const exists = pathExistsFromRepo(value);
+function assertOrWarnFileExists(value, label, message, required) {
+  const errorCountBefore = errors.length;
+  const exists = pathExistsFromRepo(value, label);
+  if (errors.length > errorCountBefore) return;
   if (required) {
     assert(exists, message);
   } else {
@@ -186,6 +218,7 @@ for (const platform of manifest.value.platforms || []) {
 if (isNonEmptyString(tokenPipeline.source)) {
   assertOrWarnFileExists(
     tokenPipeline.source,
+    'manifest sources.tokens.source',
     `token source file is missing: ${tokenPipeline.source}`,
     requireTokenSource
   );
@@ -194,6 +227,7 @@ if (isNonEmptyString(tokenPipeline.source)) {
 if (isNonEmptyString(tokenPipeline.config)) {
   assertOrWarnFileExists(
     tokenPipeline.config,
+    'manifest sources.tokens.config',
     `token build config is missing: ${tokenPipeline.config}`,
     requireTokenSource
   );
@@ -203,6 +237,7 @@ for (const [platform, outputPath] of Object.entries(tokenPipeline.outputs || {})
   if (!isNonEmptyString(outputPath)) continue;
   assertOrWarnFileExists(
     outputPath,
+    `manifest sources.tokens.outputs.${platform}`,
     `generated token artifact for ${platform} is missing: ${outputPath}`,
     requireTokenArtifacts
   );
