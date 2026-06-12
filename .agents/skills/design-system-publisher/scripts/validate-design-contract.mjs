@@ -8,8 +8,11 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(scriptDir, '..');
 const args = new Set(process.argv.slice(2));
 const allowFallback = args.has('--allow-fallback') || args.has('--init') || args.has('--check-examples');
+const requireTokenSource = args.has('--require-token-source');
+const requireTokenArtifacts = args.has('--require-token-artifacts');
 const validComponentStatuses = new Set(['draft', 'stable', 'deprecated']);
 const validPlatforms = new Set(['web', 'native']);
+const validTokenPipelineModes = new Set(['style-dictionary', 'custom']);
 const recommendedRequiredChecks = [
   'typecheck',
   'lint',
@@ -111,6 +114,25 @@ function tokenMatchesPrefix(token, prefix) {
   return token === prefix || token.startsWith(`${prefix}.`);
 }
 
+function resolveRepoPath(value) {
+  if (!isNonEmptyString(value)) return null;
+  return path.isAbsolute(value) ? value : path.join(cwd, value);
+}
+
+function pathExistsFromRepo(value) {
+  const resolved = resolveRepoPath(value);
+  return Boolean(resolved && fs.existsSync(resolved));
+}
+
+function assertOrWarnFileExists(value, message, required) {
+  const exists = pathExistsFromRepo(value);
+  if (required) {
+    assert(exists, message);
+  } else {
+    warn(exists, message);
+  }
+}
+
 let manifest;
 let componentSpec;
 let recipes;
@@ -136,13 +158,54 @@ assert(isNonEmptyString(manifest.value.packages?.tokens), 'manifest packages mus
 assert(isNonEmptyString(manifest.value.packages?.ui), 'manifest packages must define ui package');
 assert(isNonEmptyArray(manifest.value.platforms), 'manifest must define non-empty platforms array');
 assert(Array.isArray(manifest.value.requiredChecks), 'manifest must define requiredChecks array');
+assert(isPlainObject(manifest.value.sources), 'manifest must define sources object');
+assert(isPlainObject(manifest.value.sources?.tokens), 'manifest sources.tokens must define token pipeline');
 assert(isPlainObject(componentSpec.value.components), 'component spec must contain a components object');
 assert(isPlainObject(recipes.value.recipes), 'layout recipes must contain a recipes object');
 assert(Array.isArray(tokenPolicy.value.allowedLayersInProductCode), 'token policy must define allowedLayersInProductCode');
 assert(Array.isArray(tokenPolicy.value.allowedTokenPrefixes), 'token policy must define allowedTokenPrefixes array');
 
+const tokenPipeline = manifest.value.sources?.tokens || {};
+
+assert(
+  validTokenPipelineModes.has(tokenPipeline.mode),
+  `manifest sources.tokens.mode must be one of: ${[...validTokenPipelineModes].join(', ')}`
+);
+assert(isNonEmptyString(tokenPipeline.source), 'manifest sources.tokens.source must define token source path');
+assert(isNonEmptyString(tokenPipeline.config), 'manifest sources.tokens.config must define token build config path');
+assert(isPlainObject(tokenPipeline.outputs), 'manifest sources.tokens.outputs must define platform output paths');
+
 for (const platform of manifest.value.platforms || []) {
   assert(validPlatforms.has(platform), `manifest platform "${platform}" must be one of: ${[...validPlatforms].join(', ')}`);
+  assert(
+    isNonEmptyString(tokenPipeline.outputs?.[platform]),
+    `manifest sources.tokens.outputs.${platform} must define generated token artifact path`
+  );
+}
+
+if (isNonEmptyString(tokenPipeline.source)) {
+  assertOrWarnFileExists(
+    tokenPipeline.source,
+    `token source file is missing: ${tokenPipeline.source}`,
+    requireTokenSource
+  );
+}
+
+if (isNonEmptyString(tokenPipeline.config)) {
+  assertOrWarnFileExists(
+    tokenPipeline.config,
+    `token build config is missing: ${tokenPipeline.config}`,
+    requireTokenSource
+  );
+}
+
+for (const [platform, outputPath] of Object.entries(tokenPipeline.outputs || {})) {
+  if (!isNonEmptyString(outputPath)) continue;
+  assertOrWarnFileExists(
+    outputPath,
+    `generated token artifact for ${platform} is missing: ${outputPath}`,
+    requireTokenArtifacts
+  );
 }
 
 for (const requiredCheck of manifest.value.requiredChecks || []) {
@@ -204,6 +267,8 @@ console.log(`- component spec: ${path.relative(cwd, componentSpec.file) || compo
 console.log(`- layout recipes: ${path.relative(cwd, recipes.file) || recipes.file}`);
 console.log(`- token policy: ${path.relative(cwd, tokenPolicy.file) || tokenPolicy.file}`);
 console.log(`- mode: ${allowFallback ? 'fallback-enabled' : 'strict'}`);
+console.log(`- token source required: ${requireTokenSource ? 'yes' : 'no'}`);
+console.log(`- token artifacts required: ${requireTokenArtifacts ? 'yes' : 'no'}`);
 
 for (const w of warnings) console.log(`WARN ${w}`);
 

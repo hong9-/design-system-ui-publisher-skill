@@ -84,9 +84,11 @@ If a Figma URL is present but MCP is unavailable or unauthenticated:
 After sync, run:
 
 ```bash
-node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
+node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --require-token-source
 node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all
 ```
+
+When generated token artifacts are expected to be present, add `--require-token-artifacts`.
 
 The final report must state:
 

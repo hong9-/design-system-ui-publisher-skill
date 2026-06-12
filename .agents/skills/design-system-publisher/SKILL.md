@@ -179,9 +179,12 @@ node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --plat
 node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs
 ```
 
+`generate-compliance-report.mjs` is report-only by default. Use `--run-checks` only when you want it to execute `typecheck`, `lint`, `test`, contract validation, and source scan as an orchestrator.
+
 For mixed monorepos, do not assume a JavaScript package manager covers the whole repo. Also run any Rust, native, workspace-level, or manifest-required checks that the repository defines.
 
 `validate-design-contract.mjs` is strict by default. Use `--allow-fallback` only while initializing starter assets or smoke-testing the skill itself.
+Use `--require-token-source` and `--require-token-artifacts` when a repo should fail on missing Style Dictionary inputs or generated token outputs.
 
 ### 8. Report compliance
 

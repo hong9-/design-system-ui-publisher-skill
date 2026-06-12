@@ -7,6 +7,7 @@ Baseline automated checks:
 - required contract files exist in strict mode
 - manifest has version, packages, platforms, and required checks
 - manifest platforms use approved platform names
+- manifest token pipeline metadata defines mode, source, config, and platform outputs
 - component specs define status, purpose, props, and slots
 - component status uses an approved lifecycle value
 - component token references use allowed token prefixes
@@ -19,6 +20,13 @@ Command examples:
 ```bash
 <pm> run ds:validate-contract
 node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
+```
+
+Token source and generated artifact file existence are warnings by default. Make them hard failures when the repo should be fully wired:
+
+```bash
+node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --require-token-source
+node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --require-token-source --require-token-artifacts
 ```
 
 Validation is strict by default. Starter assets are not accepted as CI proof. Use `--allow-fallback` only for initialization or skill smoke tests:
@@ -73,6 +81,20 @@ Run repo-standard checks:
 ```
 
 Choose `<pm>` from the repo's native package manager: `pnpm`, `yarn`, or `npm`. In mixed monorepos, also run non-JavaScript checks required by the repo or design-system manifest.
+
+## Report generation
+
+Generate the compliance report after checks have run:
+
+```bash
+node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs
+```
+
+The report generator is report-only by default. To use it as a single local orchestrator, opt in:
+
+```bash
+node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks
+```
 
 ## Gate 4: Accessibility
 

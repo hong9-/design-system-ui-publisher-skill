@@ -12,6 +12,7 @@ const rawArgs = process.argv.slice(2);
 let out = 'design-compliance-report.generated.md';
 let platform = 'all';
 let allowFallback = false;
+let runChecks = false;
 
 for (let i = 0; i < rawArgs.length; i += 1) {
   const arg = rawArgs[i];
@@ -22,6 +23,10 @@ for (let i = 0; i < rawArgs.length; i += 1) {
     platform = arg.slice('--platform='.length);
   } else if (arg === '--allow-fallback' || arg === '--init') {
     allowFallback = true;
+  } else if (arg === '--run-checks') {
+    runChecks = true;
+  } else if (arg === '--no-run-checks') {
+    runChecks = false;
   } else if (arg === '--out') {
     out = rawArgs[i + 1] || out;
     i += 1;
@@ -97,8 +102,10 @@ const packageScripts = packageJson?.scripts || {};
 const packageManager = detectPackageManager(packageJson);
 const checks = [];
 
-for (const scriptName of ['typecheck', 'lint', 'test']) {
-  if (packageScripts[scriptName] && packageManager) {
+function addPackageScriptCheck(scriptName) {
+  if (!runChecks) {
+    checks.push(skipCheck(scriptName, 'not run by report generator; pass --run-checks to execute checks'));
+  } else if (packageScripts[scriptName] && packageManager) {
     checks.push(runCheck(scriptName, packageManager, scriptArgs(packageManager, scriptName)));
   } else if (packageScripts[scriptName]) {
     checks.push(skipCheck(scriptName, 'package manager could not be detected'));
@@ -107,25 +114,32 @@ for (const scriptName of ['typecheck', 'lint', 'test']) {
   }
 }
 
-checks.push(runCheck(
-  'design contract validation',
-  'node',
-  [
-    path.join(scriptDir, 'validate-design-contract.mjs'),
-    ...(allowFallback ? ['--allow-fallback'] : []),
-  ]
-));
+for (const scriptName of ['typecheck', 'lint', 'test']) addPackageScriptCheck(scriptName);
 
-checks.push(runCheck(
-  'design source scan',
-  'node',
-  [
-    path.join(scriptDir, 'scan-raw-styles.mjs'),
-    '.',
-    '--platform',
-    platform,
-  ]
-));
+if (runChecks) {
+  checks.push(runCheck(
+    'design contract validation',
+    'node',
+    [
+      path.join(scriptDir, 'validate-design-contract.mjs'),
+      ...(allowFallback ? ['--allow-fallback'] : []),
+    ]
+  ));
+
+  checks.push(runCheck(
+    'design source scan',
+    'node',
+    [
+      path.join(scriptDir, 'scan-raw-styles.mjs'),
+      '.',
+      '--platform',
+      platform,
+    ]
+  ));
+} else {
+  checks.push(skipCheck('design contract validation', 'not run by report generator; pass --run-checks to execute checks'));
+  checks.push(skipCheck('design source scan', 'not run by report generator; pass --run-checks to execute checks'));
+}
 
 function statusLabel(check) {
   if (check.skipped) return 'SKIP';
@@ -163,6 +177,7 @@ Generated at: ${now}
 - .design-system/layout-recipes.json: ${exists('.design-system/layout-recipes.json') ? 'present' : 'missing, fallback examples may be used'}
 - .design-system/token-policy.json: ${exists('.design-system/token-policy.json') ? 'present' : 'missing, fallback examples may be used'}
 - package manager: ${packageManager || 'not detected'}
+- check execution mode: ${runChecks ? 'run-checks' : 'report-only'}
 
 ## Automated Checks
 

@@ -20,8 +20,6 @@ Recommended repo additions:
   component-spec.json
   layout-recipes.json
   token-policy.json
-  allowed-imports.json
-  forbidden-patterns.json
 tokens/
   source/
     tokens.json
@@ -34,6 +32,8 @@ You can start by copying the examples from:
 .agents/skills/design-system-publisher/assets/
 ```
 
+Static scan rules are bundled under `.agents/skills/design-system-publisher/assets/platform-rules.*.json`.
+
 ## Recommended package scripts
 
 Add equivalents of these package-manager-agnostic scripts to your repo when ready. Invoke them with the repo's native runner, for example `pnpm run`, `yarn run`, or `npm run`.
@@ -45,12 +45,13 @@ Add equivalents of these package-manager-agnostic scripts to your repo when read
     "ds:validate-contract:init": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --allow-fallback",
     "ds:scan-raw-styles": "node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all",
     "ds:compliance-report": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs",
-    "ds:check": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs && node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all && node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs"
+    "ds:compliance-report:run-checks": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks",
+    "ds:check": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks"
   }
 }
 ```
 
-`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
+`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. `ds:compliance-report` is report-only by default; use `ds:check` or `ds:compliance-report:run-checks` when you want the report generator to execute checks. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
 
 ## How to use with Codex
 
