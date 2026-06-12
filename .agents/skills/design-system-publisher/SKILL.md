@@ -179,9 +179,9 @@ node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --plat
 node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs
 ```
 
-`generate-compliance-report.mjs` is report-only by default. Use `--run-checks` only when you want it to execute `typecheck`, `lint`, `test`, contract validation, and source scan as an orchestrator. CI-style `ds:check` scripts should pass `--require-token-source --require-token-artifacts` so missing token source, config, or generated artifacts are hard failures.
+`generate-compliance-report.mjs` is report-only by default. Use `--run-checks` only when you want it to execute `typecheck`, `lint`, `test`, contract validation, and source scan as an orchestrator. In run-checks mode, scripts listed in `manifest.requiredChecks` are hard failures when missing. CI-style `ds:check` scripts should pass `--require-token-source --require-token-artifacts` so missing token source, config, or generated artifacts are hard failures.
 
-`scan-raw-styles.mjs --platform all` auto-routes web/native-specific scan rules per file. Use `--platform web` or `--platform native` when a scan root is known to be single-platform.
+`scan-raw-styles.mjs --platform all` auto-routes web/native-specific scan rules per file. Ambiguous JSX files are scanned with both web and native rules to avoid false-green mixed repos. Use `--platform web` or `--platform native` when a scan root is known to be single-platform.
 
 For mixed monorepos, do not assume a JavaScript package manager covers the whole repo. Also run any Rust, native, workspace-level, or manifest-required checks that the repository defines.
 

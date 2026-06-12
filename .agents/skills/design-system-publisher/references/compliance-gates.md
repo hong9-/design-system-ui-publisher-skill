@@ -40,7 +40,6 @@ Advanced contract checks can be added later if the repo has richer token metadat
 - token naming convention
 - required modes exist
 - no alias cycles
-- no unknown token references beyond prefix checks
 - component props match approved variants/sizes/states
 - slots are mapped to real implementation surfaces
 - platform-incompatible values are identified from token transforms
@@ -97,6 +96,8 @@ The report generator is report-only by default. To use it as a single local orch
 ```bash
 node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks
 ```
+
+In run-checks mode, scripts listed in `manifest.requiredChecks` fail when they are missing or cannot be executed.
 
 For CI, make token source, token config, and generated token artifacts hard failures:
 

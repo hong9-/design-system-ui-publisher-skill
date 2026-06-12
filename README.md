@@ -51,9 +51,9 @@ Add equivalents of these package-manager-agnostic scripts to your repo when read
 }
 ```
 
-`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. `ds:compliance-report` is report-only by default; use `ds:check` when CI should execute checks and hard-fail on missing token source/config/artifacts. Use `ds:compliance-report:run-checks` for local orchestration before token artifacts are committed. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
+`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. `ds:compliance-report` is report-only by default; use `ds:check` when CI should execute checks, enforce `manifest.requiredChecks`, and hard-fail on missing token source/config/artifacts. Use `ds:compliance-report:run-checks` for local orchestration before token artifacts are committed. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
 
-`--platform all` auto-routes platform-specific scan rules by file path, extension, and React Native imports. Use `--platform web` or `--platform native` when scanning a known single-platform root.
+`--platform all` auto-routes platform-specific scan rules by file path, extension, and React Native imports. Ambiguous JSX files are scanned with both web and native rules to avoid false-green mixed repos. Use `--platform web` or `--platform native` when scanning a known single-platform root.
 
 ## How to use with Codex
 

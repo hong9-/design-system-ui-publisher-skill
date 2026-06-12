@@ -121,15 +121,51 @@ const packageScripts = packageJson?.scripts || {};
 const packageManager = detectPackageManager(packageJson);
 const checks = [];
 
+function readJsonIfExists(file) {
+  if (!fs.existsSync(file)) return null;
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+function readManifestForChecks() {
+  const repoManifest = readJsonIfExists(path.join(cwd, '.design-system/design-system-manifest.json'));
+  if (repoManifest) return repoManifest;
+  if (!allowFallback) return null;
+  return readJsonIfExists(path.join(scriptDir, '..', 'assets/design-system-manifest.example.json'));
+}
+
+const manifestForChecks = readManifestForChecks();
+const requiredChecks = new Set(
+  Array.isArray(manifestForChecks?.requiredChecks)
+    ? manifestForChecks.requiredChecks.filter((check) => typeof check === 'string' && check.trim())
+    : []
+);
+
+function isRequiredCheck(name) {
+  return requiredChecks.has(name);
+}
+
+function failedRequiredCheck(name, reason) {
+  return {
+    name,
+    command: '',
+    critical: true,
+    skipped: false,
+    status: 1,
+    output: reason,
+  };
+}
+
 function addPackageScriptCheck(scriptName) {
   if (!runChecks) {
     checks.push(skipCheck(scriptName, 'not run by report generator; pass --run-checks to execute checks'));
   } else if (packageScripts[scriptName] && packageManager) {
     checks.push(runCheck(scriptName, packageManager, scriptArgs(packageManager, scriptName)));
   } else if (packageScripts[scriptName]) {
-    checks.push(skipCheck(scriptName, 'package manager could not be detected'));
+    const reason = 'package manager could not be detected';
+    checks.push(isRequiredCheck(scriptName) ? failedRequiredCheck(scriptName, reason) : skipCheck(scriptName, reason));
   } else {
-    checks.push(skipCheck(scriptName, `package.json script "${scriptName}" is not defined`));
+    const reason = `package.json script "${scriptName}" is not defined`;
+    checks.push(isRequiredCheck(scriptName) ? failedRequiredCheck(scriptName, reason) : skipCheck(scriptName, reason));
   }
 }
 
@@ -200,6 +236,7 @@ Generated at: ${now}
 - .design-system/layout-recipes.json: ${exists('.design-system/layout-recipes.json') ? 'present' : 'missing, fallback examples may be used'}
 - .design-system/token-policy.json: ${exists('.design-system/token-policy.json') ? 'present' : 'missing, fallback examples may be used'}
 - package manager: ${packageManager || 'not detected'}
+- manifest required checks: ${requiredChecks.size > 0 ? [...requiredChecks].join(', ') : 'not available'}
 - check execution mode: ${runChecks ? 'run-checks' : 'report-only'}
 
 ## Automated Checks

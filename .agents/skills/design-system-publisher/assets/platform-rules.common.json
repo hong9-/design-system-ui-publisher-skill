@@ -31,7 +31,7 @@
     },
     {
       "type": "raw-style-number",
-      "regex": "\\b(?:padding|margin|gap|rowGap|columnGap|borderRadius|fontSize|lineHeight|letterSpacing)\\s*:\\s*(?:['\"])?\\d+(?:px)?(?:['\"])?"
+      "regex": "\\b(?:padding(?:Top|Right|Bottom|Left|Horizontal|Vertical|Block|Inline)?|margin(?:Top|Right|Bottom|Left|Horizontal|Vertical|Block|Inline)?|gap|rowGap|columnGap|borderRadius|border(?:TopLeft|TopRight|BottomLeft|BottomRight)?Radius|fontSize|lineHeight|letterSpacing|fontWeight|width|height|minWidth|minHeight|maxWidth|maxHeight|top|right|bottom|left|inset|zIndex|padding(?:-(?:top|right|bottom|left|block|inline))?|margin(?:-(?:top|right|bottom|left|block|inline))?|row-gap|column-gap|border-radius|border-(?:top-left|top-right|bottom-left|bottom-right)-radius|font-size|line-height|letter-spacing|font-weight|min-width|min-height|max-width|max-height|z-index)\\s*:\\s*(?:['\"])?-?\\d+(?:\\.\\d+)?(?:px|rem|em|%)?(?:['\"])?"
     },
     {
       "type": "inline-style-object",
