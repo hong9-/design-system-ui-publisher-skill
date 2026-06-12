@@ -1,8 +1,9 @@
 {
   "scripts": {
     "ds:validate-contract": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs",
-    "ds:scan-raw-styles": "node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs .",
+    "ds:validate-contract:init": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --allow-fallback",
+    "ds:scan-raw-styles": "node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all",
     "ds:compliance-report": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs",
-    "ds:check": "pnpm ds:validate-contract && pnpm ds:scan-raw-styles && pnpm ds:compliance-report"
+    "ds:check": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs && node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all && node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs"
   }
 }

@@ -2,7 +2,7 @@
 
 ## Variables to tokens
 
-Figma Variables are treated as the upstream design source. A token build step, commonly Style Dictionary, converts them into platform-specific artifacts.
+Figma Variables can inform the token source, but product code should consume artifacts generated from committed token JSON. A token build step, commonly Style Dictionary, converts that source into platform-specific artifacts.
 
 Recommended token layers:
 

@@ -2,22 +2,40 @@
 
 ## Gate 1: Contract validation
 
-Checks:
+Baseline automated checks:
 
-- token naming convention
-- required modes exist
-- no alias cycles
-- no unknown token references
-- component props match approved variants/sizes/states
-- slots are mapped
-- platform-incompatible values are identified
+- required contract files exist in strict mode
+- manifest has version, packages, platforms, and required checks
+- manifest platforms use approved platform names
+- component specs define status, purpose, props, and slots
+- component status uses an approved lifecycle value
+- component token references use allowed token prefixes
+- layout recipes define purpose and required states
+- recipe inheritance points to an existing recipe
+- token policy defines allowed layers and token prefixes
 
 Command examples:
 
 ```bash
-pnpm ds:validate-contract
+<pm> run ds:validate-contract
 node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
 ```
+
+Validation is strict by default. Starter assets are not accepted as CI proof. Use `--allow-fallback` only for initialization or skill smoke tests:
+
+```bash
+node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --allow-fallback
+```
+
+Advanced contract checks can be added later if the repo has richer token metadata:
+
+- token naming convention
+- required modes exist
+- no alias cycles
+- no unknown token references beyond prefix checks
+- component props match approved variants/sizes/states
+- slots are mapped to real implementation surfaces
+- platform-incompatible values are identified from token transforms
 
 ## Gate 2: Static source scan
 
@@ -32,27 +50,37 @@ Checks:
 Command examples:
 
 ```bash
-pnpm ds:scan-raw-styles
-node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs .
+<pm> run ds:scan-raw-styles
+node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all
+node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs apps/web --platform web
+node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs apps/mobile --platform native
 ```
+
+Platform rule modules:
+
+- common: raw visual values, inline style bypasses, design lint suppression
+- web: direct DOM primitives and arbitrary class utilities
+- native: direct `react-native` visual primitive imports, `className`, and web CSS variable usage
 
 ## Gate 3: Type/lint/test
 
 Run repo-standard checks:
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm test
+<pm> run typecheck
+<pm> run lint
+<pm> run test
 ```
+
+Choose `<pm>` from the repo's native package manager: `pnpm`, `yarn`, or `npm`. In mixed monorepos, also run non-JavaScript checks required by the repo or design-system manifest.
 
 ## Gate 4: Accessibility
 
 Run whatever the repo supports:
 
 ```bash
-pnpm test:a11y
-pnpm test:e2e:a11y
+<pm> run test:a11y
+<pm> run test:e2e:a11y
 ```
 
 Minimum manual assertions when tooling is absent:
@@ -68,8 +96,8 @@ Minimum manual assertions when tooling is absent:
 Run when available:
 
 ```bash
-pnpm test:visual
-pnpm storybook:build
+<pm> run test:visual
+<pm> run storybook:build
 ```
 
 Visual diffs require review approval.

@@ -2,7 +2,7 @@
 
 This zip contains a repo-scoped Codex skill for publishing React and React Native UI without page-level design files.
 
-The skill assumes the team receives a Figma design system guide, not per-page designs. Figma Variables are converted into design tokens through Style Dictionary or an equivalent token build step. Figma component properties and selected layer names are converted into component contracts, slots, variants, states, and layout recipes. Codex or another coding agent then assembles screens/components inside those rules and runs deterministic compliance checks.
+The skill assumes the team receives a Figma design system guide, not per-page designs. Token source JSON is built through Style Dictionary or an equivalent token build step. When a Figma URL and MCP connection are available, Figma component properties and selected layer names enrich component contracts, slots, variants, states, and layout recipes. Codex or another coding agent then assembles screens/components inside those rules and runs deterministic compliance checks.
 
 ## Install
 
@@ -22,6 +22,10 @@ Recommended repo additions:
   token-policy.json
   allowed-imports.json
   forbidden-patterns.json
+tokens/
+  source/
+    tokens.json
+style-dictionary.config.mjs
 ```
 
 You can start by copying the examples from:
@@ -32,18 +36,21 @@ You can start by copying the examples from:
 
 ## Recommended package scripts
 
-Add equivalents of these commands to your repo when ready:
+Add equivalents of these package-manager-agnostic scripts to your repo when ready. Invoke them with the repo's native runner, for example `pnpm run`, `yarn run`, or `npm run`.
 
 ```json
 {
   "scripts": {
     "ds:validate-contract": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs",
-    "ds:scan-raw-styles": "node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs .",
+    "ds:validate-contract:init": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --allow-fallback",
+    "ds:scan-raw-styles": "node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all",
     "ds:compliance-report": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs",
-    "ds:check": "pnpm ds:validate-contract && pnpm ds:scan-raw-styles && pnpm ds:compliance-report"
+    "ds:check": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs && node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all && node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs"
   }
 }
 ```
+
+`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
 
 ## How to use with Codex
 

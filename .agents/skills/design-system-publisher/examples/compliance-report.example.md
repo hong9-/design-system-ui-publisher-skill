@@ -39,11 +39,11 @@
 ## Checks Run
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm ds:validate-contract
-pnpm ds:scan-raw-styles
-pnpm test
+<pm> run typecheck
+<pm> run lint
+<pm> run ds:validate-contract
+<pm> run ds:scan-raw-styles
+<pm> run test
 ```
 
 ## Results

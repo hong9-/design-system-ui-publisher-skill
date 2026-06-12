@@ -8,17 +8,88 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck --if-present
-      - run: pnpm lint --if-present
-      - run: pnpm ds:validate-contract --if-present
-      - run: pnpm ds:scan-raw-styles --if-present
-      - run: pnpm test --if-present
-      - run: pnpm ds:compliance-report --if-present
+      - name: Install JavaScript dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          runner=""
+          if [ -f package.json ]; then
+            runner="$(node -e "const pm=require('./package.json').packageManager||''; const name=pm.split('@')[0]; if(['pnpm','yarn','npm'].includes(name)) console.log(name);")"
+          fi
+          if [ -z "$runner" ] && [ -f pnpm-lock.yaml ]; then runner=pnpm; fi
+          if [ -z "$runner" ] && [ -f yarn.lock ]; then runner=yarn; fi
+          if [ -z "$runner" ] && { [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; }; then runner=npm; fi
+          if [ -z "$runner" ] && [ -f package.json ]; then runner=npm; fi
+
+          case "$runner" in
+            pnpm)
+              if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+              ;;
+            yarn)
+              if [ -f yarn.lock ]; then yarn install --immutable || yarn install --frozen-lockfile; else yarn install; fi
+              ;;
+            npm)
+              if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then npm ci; else npm install; fi
+              ;;
+            *)
+              echo "No package.json found; skipping JavaScript dependency install."
+              ;;
+          esac
+      - name: Run design compliance
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          detect_runner() {
+            if [ -f package.json ]; then
+              node -e "const pm=require('./package.json').packageManager||''; const name=pm.split('@')[0]; if(['pnpm','yarn','npm'].includes(name)) console.log(name);"
+            fi
+            if [ -f pnpm-lock.yaml ]; then echo pnpm; return; fi
+            if [ -f yarn.lock ]; then echo yarn; return; fi
+            if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then echo npm; return; fi
+            if [ -f package.json ]; then echo npm; return; fi
+          }
+
+          has_script() {
+            [ -f package.json ] && node -e "const s=require('./package.json').scripts||{}; process.exit(s[process.argv[1]] ? 0 : 1)" "$1"
+          }
+
+          run_script() {
+            local script="$1"
+            local runner
+            runner="$(detect_runner | head -n 1)"
+            case "$runner" in
+              pnpm|yarn|npm) "$runner" run "$script" ;;
+              *) return 1 ;;
+            esac
+          }
+
+          run_optional_script() {
+            local script="$1"
+            if has_script "$script"; then
+              run_script "$script"
+            else
+              echo "Skipping missing package script: $script"
+            fi
+          }
+
+          run_required_script_or_node() {
+            local script="$1"
+            shift
+            if has_script "$script"; then
+              run_script "$script"
+            else
+              node "$@"
+            fi
+          }
+
+          run_optional_script typecheck
+          run_optional_script lint
+          run_required_script_or_node ds:validate-contract .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
+          run_required_script_or_node ds:scan-raw-styles .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all
+          run_optional_script test
+          run_required_script_or_node ds:compliance-report .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs

@@ -1,0 +1,45 @@
+{
+  "ignoredDirs": [
+    ".git",
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    ".next",
+    ".expo",
+    "ios",
+    "android"
+  ],
+  "ignoredPathIncludes": [
+    "/packages/ui/",
+    "/design-tokens/",
+    "/.agents/skills/",
+    "/.design-system/"
+  ],
+  "extensions": [
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".css",
+    ".scss"
+  ],
+  "patterns": [
+    {
+      "type": "raw-color",
+      "regex": "#[0-9a-fA-F]{3,8}\\b|\\brgba?\\(|\\bhsla?\\("
+    },
+    {
+      "type": "raw-style-number",
+      "regex": "\\b(?:padding|margin|gap|rowGap|columnGap|borderRadius|fontSize|lineHeight|letterSpacing)\\s*:\\s*(?:['\"])?\\d+(?:px)?(?:['\"])?"
+    },
+    {
+      "type": "inline-style-object",
+      "regex": "\\bstyle\\s*=\\s*\\{\\s*\\{"
+    },
+    {
+      "type": "design-lint-suppression",
+      "regex": "eslint-disable[^\\n]*design|@ts-ignore[^\\n]*design"
+    }
+  ]
+}

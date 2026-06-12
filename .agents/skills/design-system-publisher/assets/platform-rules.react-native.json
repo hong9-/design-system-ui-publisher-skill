@@ -1,0 +1,19 @@
+{
+  "reactNativeForbiddenImports": [
+    "View",
+    "Text",
+    "Pressable",
+    "TouchableOpacity",
+    "StyleSheet"
+  ],
+  "patterns": [
+    {
+      "type": "native-web-css-variable",
+      "regex": "var\\(--[a-zA-Z0-9-]+\\)"
+    },
+    {
+      "type": "native-classname-prop",
+      "regex": "\\bclassName\\s*="
+    }
+  ]
+}

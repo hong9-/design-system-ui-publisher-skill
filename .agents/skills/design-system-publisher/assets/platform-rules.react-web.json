@@ -1,0 +1,12 @@
+{
+  "patterns": [
+    {
+      "type": "web-direct-dom-primitive",
+      "regex": "<\\s*(?:div|span|button|input|textarea|select)\\b"
+    },
+    {
+      "type": "web-tailwind-arbitrary-value",
+      "regex": "\\b(?:p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|text|bg|border|rounded|w|h)-\\[[^\\]]+\\]"
+    }
+  ]
+}

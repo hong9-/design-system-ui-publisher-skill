@@ -1,6 +1,15 @@
 # Style Dictionary Integration
 
-Style Dictionary or an equivalent build step should transform Figma-derived tokens into platform-specific artifacts.
+Style Dictionary or an equivalent build step should transform committed token source JSON into platform-specific artifacts. This is the primary token pipeline for reproducible local and CI checks.
+
+Figma MCP can enrich component contracts, but CI should not depend on live Figma access.
+
+Recommended inputs:
+
+```txt
+tokens/source/tokens.json
+style-dictionary.config.mjs
+```
 
 Recommended outputs:
 
@@ -50,3 +59,7 @@ native
 ```
 
 Do not use web CSS variables directly in React Native.
+
+## Relationship to Figma
+
+When a Figma URL is available, use Figma MCP to inspect variables and component metadata, then commit the normalized contract and token source. After that, Style Dictionary should be able to rebuild token artifacts without Figma access.

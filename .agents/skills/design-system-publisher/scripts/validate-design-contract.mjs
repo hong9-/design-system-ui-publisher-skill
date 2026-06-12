@@ -1,36 +1,87 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const cwd = process.cwd();
-const skillRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const skillRoot = path.resolve(scriptDir, '..');
+const args = new Set(process.argv.slice(2));
+const allowFallback = args.has('--allow-fallback') || args.has('--init') || args.has('--check-examples');
+const validComponentStatuses = new Set(['draft', 'stable', 'deprecated']);
+const validPlatforms = new Set(['web', 'native']);
+const recommendedRequiredChecks = [
+  'typecheck',
+  'lint',
+  'ds:validate-contract',
+  'ds:scan-raw-styles',
+  'test',
+  'ds:compliance-report',
+];
 
 const candidates = {
   manifest: [
-    path.join(cwd, '.design-system/design-system-manifest.json'),
-    path.join(skillRoot, 'assets/design-system-manifest.example.json'),
+    {
+      file: path.join(cwd, '.design-system/design-system-manifest.json'),
+      required: true,
+    },
+    {
+      file: path.join(skillRoot, 'assets/design-system-manifest.example.json'),
+      fallback: true,
+    },
   ],
   componentSpec: [
-    path.join(cwd, '.design-system/component-spec.json'),
-    path.join(skillRoot, 'assets/component-spec.example.json'),
+    {
+      file: path.join(cwd, '.design-system/component-spec.json'),
+      required: true,
+    },
+    {
+      file: path.join(skillRoot, 'assets/component-spec.example.json'),
+      fallback: true,
+    },
   ],
   recipes: [
-    path.join(cwd, '.design-system/layout-recipes.json'),
-    path.join(skillRoot, 'assets/layout-recipes.json'),
+    {
+      file: path.join(cwd, '.design-system/layout-recipes.json'),
+      required: true,
+    },
+    {
+      file: path.join(skillRoot, 'assets/layout-recipes.json'),
+      fallback: true,
+    },
   ],
   tokenPolicy: [
-    path.join(cwd, '.design-system/token-policy.json'),
-    path.join(skillRoot, 'assets/token-policy.json'),
+    {
+      file: path.join(cwd, '.design-system/token-policy.json'),
+      required: true,
+    },
+    {
+      file: path.join(skillRoot, 'assets/token-policy.json'),
+      fallback: true,
+    },
   ],
 };
 
 function readFirst(name, paths) {
-  for (const file of paths) {
+  for (const candidate of paths) {
+    const { file, fallback } = candidate;
+    if (fallback && !allowFallback) continue;
     if (fs.existsSync(file)) {
-      return { file, value: JSON.parse(fs.readFileSync(file, 'utf8')) };
+      return {
+        file,
+        fallback: Boolean(fallback),
+        value: JSON.parse(fs.readFileSync(file, 'utf8')),
+      };
     }
   }
-  throw new Error(`Missing ${name}. Checked:\n${paths.map(p => `- ${p}`).join('\n')}`);
+  const checked = paths
+    .filter((candidate) => !candidate.fallback || allowFallback)
+    .map((candidate) => `- ${candidate.file}`)
+    .join('\n');
+  const fallbackHint = allowFallback
+    ? ''
+    : '\nStarter assets are intentionally not used in strict mode. Re-run with --allow-fallback only for initialization or skill smoke tests.';
+  throw new Error(`Missing required ${name}. Checked:\n${checked}${fallbackHint}`);
 }
 
 const errors = [];
@@ -44,26 +95,106 @@ function warn(condition, message) {
   if (!condition) warnings.push(message);
 }
 
-const manifest = readFirst('manifest', candidates.manifest);
-const componentSpec = readFirst('componentSpec', candidates.componentSpec);
-const recipes = readFirst('recipes', candidates.recipes);
-const tokenPolicy = readFirst('tokenPolicy', candidates.tokenPolicy);
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
 
-assert(componentSpec.value.components && typeof componentSpec.value.components === 'object', 'component spec must contain a components object');
-assert(recipes.value.recipes && typeof recipes.value.recipes === 'object', 'layout recipes must contain a recipes object');
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isNonEmptyArray(value) {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function tokenMatchesPrefix(token, prefix) {
+  return token === prefix || token.startsWith(`${prefix}.`);
+}
+
+let manifest;
+let componentSpec;
+let recipes;
+let tokenPolicy;
+
+try {
+  manifest = readFirst('manifest', candidates.manifest);
+  componentSpec = readFirst('componentSpec', candidates.componentSpec);
+  recipes = readFirst('recipes', candidates.recipes);
+  tokenPolicy = readFirst('tokenPolicy', candidates.tokenPolicy);
+} catch (error) {
+  console.error(`FAIL ${error.message}`);
+  process.exit(1);
+}
+
+if ([manifest, componentSpec, recipes, tokenPolicy].some((input) => input.fallback)) {
+  warnings.push('validation used starter assets; do not treat this as CI proof for a product repo');
+}
+
+assert(isNonEmptyString(manifest.value.version), 'manifest must define version');
+assert(isPlainObject(manifest.value.packages), 'manifest must define packages object');
+assert(isNonEmptyString(manifest.value.packages?.tokens), 'manifest packages must define tokens package');
+assert(isNonEmptyString(manifest.value.packages?.ui), 'manifest packages must define ui package');
+assert(isNonEmptyArray(manifest.value.platforms), 'manifest must define non-empty platforms array');
+assert(Array.isArray(manifest.value.requiredChecks), 'manifest must define requiredChecks array');
+assert(isPlainObject(componentSpec.value.components), 'component spec must contain a components object');
+assert(isPlainObject(recipes.value.recipes), 'layout recipes must contain a recipes object');
 assert(Array.isArray(tokenPolicy.value.allowedLayersInProductCode), 'token policy must define allowedLayersInProductCode');
+assert(Array.isArray(tokenPolicy.value.allowedTokenPrefixes), 'token policy must define allowedTokenPrefixes array');
+
+for (const platform of manifest.value.platforms || []) {
+  assert(validPlatforms.has(platform), `manifest platform "${platform}" must be one of: ${[...validPlatforms].join(', ')}`);
+}
+
+for (const requiredCheck of manifest.value.requiredChecks || []) {
+  assert(isNonEmptyString(requiredCheck), 'manifest requiredChecks must contain only non-empty strings');
+}
+
+for (const check of recommendedRequiredChecks) {
+  warn((manifest.value.requiredChecks || []).includes(check), `manifest requiredChecks should include ${check}`);
+}
+
+const allowedTokenPrefixes = tokenPolicy.value.allowedTokenPrefixes || [];
+
+for (const prefix of allowedTokenPrefixes) {
+  assert(isNonEmptyString(prefix), 'token policy allowedTokenPrefixes must contain only non-empty strings');
+}
 
 for (const [name, component] of Object.entries(componentSpec.value.components || {})) {
-  assert(component.status, `${name}: missing status`);
-  assert(component.purpose, `${name}: missing purpose`);
-  assert(component.props && typeof component.props === 'object', `${name}: missing props`);
+  assert(validComponentStatuses.has(component.status), `${name}: status must be one of: ${[...validComponentStatuses].join(', ')}`);
+  assert(isNonEmptyString(component.purpose), `${name}: missing purpose`);
+  assert(isPlainObject(component.props), `${name}: missing props object`);
   assert(Array.isArray(component.slots), `${name}: missing slots array`);
+  for (const slot of component.slots || []) {
+    assert(isNonEmptyString(slot), `${name}: slots must contain only non-empty strings`);
+  }
+  if (component.states !== undefined) {
+    assert(Array.isArray(component.states), `${name}: states must be an array when provided`);
+  }
+  if (component.tokens !== undefined) {
+    assert(Array.isArray(component.tokens), `${name}: tokens must be an array when provided`);
+    for (const token of component.tokens || []) {
+      assert(isNonEmptyString(token), `${name}: tokens must contain only non-empty strings`);
+      assert(
+        allowedTokenPrefixes.some((prefix) => tokenMatchesPrefix(token, prefix)),
+        `${name}: token "${token}" must start with an allowed prefix`
+      );
+    }
+  }
   warn(component.states || component.accessibility, `${name}: should define states or accessibility guidance`);
 }
 
 for (const [name, recipe] of Object.entries(recipes.value.recipes || {})) {
-  assert(recipe.purpose, `${name}: missing purpose`);
-  assert(Array.isArray(recipe.requiredStates), `${name}: missing requiredStates array`);
+  assert(isNonEmptyString(recipe.purpose), `${name}: missing purpose`);
+  assert(isNonEmptyArray(recipe.requiredStates), `${name}: missing non-empty requiredStates array`);
+  for (const state of recipe.requiredStates || []) {
+    assert(isNonEmptyString(state), `${name}: requiredStates must contain only non-empty strings`);
+  }
+  if (recipe.extends !== undefined) {
+    assert(
+      isNonEmptyString(recipe.extends) && Boolean(recipes.value.recipes?.[recipe.extends]),
+      `${name}: extends must reference an existing recipe`
+    );
+  }
   warn(recipe.layout || recipe.extends, `${name}: should define layout or extends`);
 }
 
@@ -72,6 +203,7 @@ console.log(`- manifest: ${path.relative(cwd, manifest.file) || manifest.file}`)
 console.log(`- component spec: ${path.relative(cwd, componentSpec.file) || componentSpec.file}`);
 console.log(`- layout recipes: ${path.relative(cwd, recipes.file) || recipes.file}`);
 console.log(`- token policy: ${path.relative(cwd, tokenPolicy.file) || tokenPolicy.file}`);
+console.log(`- mode: ${allowFallback ? 'fallback-enabled' : 'strict'}`);
 
 for (const w of warnings) console.log(`WARN ${w}`);
 

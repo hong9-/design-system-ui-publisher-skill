@@ -2,11 +2,23 @@
   "$schema": "./design-system-manifest.schema.json",
   "version": "0.1.0",
   "sources": {
+    "tokens": {
+      "mode": "style-dictionary",
+      "source": "tokens/source/tokens.json",
+      "config": "style-dictionary.config.mjs",
+      "outputs": {
+        "web": "packages/design-tokens/build/web/tokens.css",
+        "native": "packages/design-tokens/build/native/tokens.ts"
+      }
+    },
     "figma": {
-      "mode": "export-or-api",
-      "variables": "Figma Variables are normalized into tokens before code use",
+      "mode": "mcp-enriched",
+      "fileUrl": "https://www.figma.com/file/REPLACE_WITH_FILE_KEY/Design-System",
+      "requiredForCi": false,
+      "variables": "Figma Variables may inform token source, but Style Dictionary builds code artifacts",
       "components": "Figma component properties become component specs",
-      "layers": "Meaningful layers become slot hints"
+      "layers": "Meaningful layers become slot hints",
+      "fallback": "tokens-only"
     }
   },
   "packages": {

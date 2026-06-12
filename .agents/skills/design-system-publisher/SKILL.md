@@ -19,9 +19,11 @@ Treat these as the source of truth, in this order:
 4. `.design-system/token-policy.json`, if present
 5. generated design token packages, for example `packages/design-tokens`
 6. shared UI package, for example `packages/ui` or `@my/ui`
-7. fallback examples in this skill's `assets/` directory
+7. starter examples in this skill's `assets/` directory, for initialization only
 
-Figma Variables become tokens. Figma component properties become TypeScript props. Meaningful Figma layer names become slots. Figma usage rules become lint/test/compliance gates.
+Committed token source becomes generated design token artifacts. Figma component properties become TypeScript props. Meaningful Figma layer names become slots. Figma usage rules become lint/test/compliance gates.
+
+For `sync-design-contract` tasks, treat Style Dictionary or an equivalent token build as the primary token pipeline. Use Figma MCP only to enrich the contract with component sets, properties, variants, slots, and usage intent. Figma MCP is not required for CI.
 
 ## Core rules
 
@@ -65,18 +67,25 @@ If the task is not UI-related, do not use this skill.
 
 ### 2. Read contracts and rules
 
-Read the relevant files from `.design-system/`. If they are absent, use the examples under `assets/` as a fallback and note the fallback in the report.
+Read the relevant files from `.design-system/`. If they are absent, use the examples under `assets/` only to initialize or orient the repo; do not treat starter examples as CI proof for product UI.
 
 Useful references:
 
 - `references/figma-to-contract.md`
+- `references/figma-import.md`, for `sync-design-contract` tasks
+- `references/style-dictionary-integration.md`, for token build setup
 - `references/publishing-rules.md`
 - `references/component-contract.md`
 - `references/layout-recipes.md`
 - `references/compliance-gates.md`
 - `references/review-checklist.md`
+- `references/platform-common.md`
+- `references/platform-react-web.md`, when target includes web
+- `references/platform-react-native.md`, when target includes native
 
 ### 3. Select a recipe
+
+For `sync-design-contract`, skip recipe selection and follow `references/figma-import.md`.
 
 For screens, pick the closest recipe:
 
@@ -143,26 +152,36 @@ Add the best available coverage for the repo:
 
 ### 7. Run checks
 
-Prefer repo scripts first:
+Prefer repo-native scripts first. Detect the JavaScript package manager from `package.json#packageManager` or lockfiles, then use the matching package manager:
+
+- `pnpm-lock.yaml` or `packageManager: "pnpm@..."`: `pnpm run <script>`
+- `yarn.lock` or `packageManager: "yarn@..."`: `yarn run <script>`
+- `package-lock.json`, `npm-shrinkwrap.json`, or npm package metadata: `npm run <script>`
+
+Run the equivalents of these scripts when they exist:
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm ds:validate-contract
-pnpm ds:scan-raw-styles
-pnpm test
-pnpm test:a11y
-pnpm test:visual
-pnpm ds:compliance-report
+<pm> run typecheck
+<pm> run lint
+<pm> run ds:validate-contract
+<pm> run ds:scan-raw-styles
+<pm> run test
+<pm> run test:a11y
+<pm> run test:visual
+<pm> run ds:compliance-report
 ```
 
-If those scripts do not exist, run this skill's fallback scripts when possible:
+If package scripts do not exist, run this skill's fallback scripts directly when possible:
 
 ```bash
 node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
-node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs .
+node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all
 node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs
 ```
+
+For mixed monorepos, do not assume a JavaScript package manager covers the whole repo. Also run any Rust, native, workspace-level, or manifest-required checks that the repository defines.
+
+`validate-design-contract.mjs` is strict by default. Use `--allow-fallback` only while initializing starter assets or smoke-testing the skill itself.
 
 ### 8. Report compliance
 
