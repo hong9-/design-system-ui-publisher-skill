@@ -32,6 +32,7 @@ Always follow these rules for product UI:
 - Use approved design system components, preferably from `@my/ui` or the local UI package.
 - Use semantic or component tokens. Do not use raw visual values.
 - Do not create new colors, spacing, font sizes, radii, shadows, or visual variants unless the task explicitly asks for design-system evolution.
+- If a task needs visual design that the contract does not cover, do not invent it in product UI. Create a design-system extension proposal YAML and block the publishing task until explicit approval.
 - Do not use direct DOM/RN primitives in product screens unless the design-system rules allow it.
 - Implement all states required by the selected layout recipe.
 - Add stories, examples, or fixtures for every required state.
@@ -77,6 +78,7 @@ Useful references:
 - `references/publishing-rules.md`
 - `references/component-contract.md`
 - `references/layout-recipes.md`
+- `references/design-system-extension-proposals.md`, when the UI needs tokens, components, variants, states, or recipes that are missing from the contract
 - `references/compliance-gates.md`
 - `references/review-checklist.md`
 - `references/platform-common.md`
@@ -97,6 +99,8 @@ For screens, pick the closest recipe:
 - `dashboard-screen`
 
 Do not invent a new page pattern by default. If no recipe fits, use the closest recipe and document the deviation.
+
+If the closest recipe still requires new visual grammar, stop product implementation and create `.design-system/proposals/<slug>.yaml` from `assets/design-system-extension-proposal.template.yaml`. Continue only after explicit approval or after the user explicitly changes the task into a design-system evolution task.
 
 ### 4. Implement within the design grammar
 

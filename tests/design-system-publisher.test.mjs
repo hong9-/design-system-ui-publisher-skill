@@ -10,6 +10,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const skillRoot = path.join(packageRoot, '.agents/skills/design-system-publisher');
 const scriptsDir = path.join(skillRoot, 'scripts');
 const assetsDir = path.join(skillRoot, 'assets');
+const referencesDir = path.join(skillRoot, 'references');
 
 function makeTempRepo(name) {
   return fs.mkdtempSync(path.join(os.tmpdir(), `${name}-`));
@@ -40,6 +41,25 @@ function runScript(scriptName, args, cwd) {
 function combinedOutput(result) {
   return `${result.stdout || ''}${result.stderr || ''}`;
 }
+
+test('skill documents design-system extension proposal workflow', () => {
+  const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+  const reference = fs.readFileSync(
+    path.join(referencesDir, 'design-system-extension-proposals.md'),
+    'utf8'
+  );
+  const template = fs.readFileSync(
+    path.join(assetsDir, 'design-system-extension-proposal.template.yaml'),
+    'utf8'
+  );
+
+  assert.match(skill, /do not invent it in product UI/i);
+  assert.match(skill, /design-system-extension-proposal\.template\.yaml/);
+  assert.match(reference, /Do not invent missing visual decisions directly in product UI/);
+  assert.match(template, /type: design-system-extension-proposal/);
+  assert.match(template, /status: needs-design-review/);
+  assert.match(template, /approval:\n  required: true/);
+});
 
 function seedDesignContract(repo, overrides = {}) {
   const tokenSource = overrides.tokenSource || 'tokens/source/tokens.json';

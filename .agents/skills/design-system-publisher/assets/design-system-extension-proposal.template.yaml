@@ -1,0 +1,22 @@
+type: design-system-extension-proposal
+status: needs-design-review
+
+reason:
+  missing_contract: ""
+  why_existing_contract_is_insufficient: ""
+
+proposed_changes:
+  tokens: []
+  components: []
+  layout_recipes: []
+
+impact:
+  platforms: []
+  accessibility: []
+
+blocked_tasks: []
+
+approval:
+  required: true
+  approver: design-system-owner
+  decision: pending
