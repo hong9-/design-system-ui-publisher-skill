@@ -61,6 +61,18 @@ test('skill documents design-system extension proposal workflow', () => {
   assert.match(template, /approval:\n  required: true/);
 });
 
+test('skill documents Figma variable import without bloating SKILL.md', () => {
+  const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+  const figmaImport = fs.readFileSync(path.join(referencesDir, 'figma-import.md'), 'utf8');
+
+  assert.match(skill, /Do not preload every reference file/);
+  assert.match(skill, /Figma Variables may be imported during explicit sync tasks/);
+  assert.match(figmaImport, /sync-design-contract`: Figma MCP may import Variables/);
+  assert.match(figmaImport, /raw Figma Variables snapshot/);
+  assert.match(figmaImport, /During ordinary screen\/component publishing, do not fetch live Figma tokens/);
+  assert.ok(skill.split('\n').length < 260);
+});
+
 function seedDesignContract(repo, overrides = {}) {
   const tokenSource = overrides.tokenSource || 'tokens/source/tokens.json';
   const tokenConfig = overrides.tokenConfig || 'style-dictionary.config.mjs';

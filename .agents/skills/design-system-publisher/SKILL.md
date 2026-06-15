@@ -21,9 +21,9 @@ Treat these as the source of truth, in this order:
 6. shared UI package, for example `packages/ui` or `@my/ui`
 7. starter examples in this skill's `assets/` directory, for initialization only
 
-Committed token source becomes generated design token artifacts. Figma component properties become TypeScript props. Meaningful Figma layer names become slots. Figma usage rules become lint/test/compliance gates.
+Committed token source becomes generated design token artifacts. Figma Variables may be imported during explicit sync tasks, then committed as raw/normalized token source. Figma component properties become TypeScript props. Meaningful Figma layer names become slots. Figma usage rules become lint/test/compliance gates.
 
-For `sync-design-contract` tasks, treat Style Dictionary or an equivalent token build as the primary token pipeline. Use Figma MCP only to enrich the contract with component sets, properties, variants, slots, and usage intent. Figma MCP is not required for CI.
+For `sync-design-contract` tasks, use Figma MCP when available to import Variables and enrich component contracts, then use Style Dictionary or an equivalent token build as the reproducible code pipeline. Figma MCP is not required for CI.
 
 ## Core rules
 
@@ -69,6 +69,8 @@ If the task is not UI-related, do not use this skill.
 ### 2. Read contracts and rules
 
 Read the relevant files from `.design-system/`. If they are absent, use the examples under `assets/` only to initialize or orient the repo; do not treat starter examples as CI proof for product UI.
+
+Do not preload every reference file. Load only the references that match the classified task, target platform, and current blocker.
 
 Useful references:
 

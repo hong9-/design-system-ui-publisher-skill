@@ -4,22 +4,30 @@ Use this workflow for `sync-design-contract` tasks.
 
 ## Import policy
 
-Token build is primary. Figma MCP is enrichment.
+Use a two-phase model:
 
-1. Build or verify tokens through Style Dictionary or an equivalent token pipeline.
-2. If a Figma URL is provided, use Figma MCP to enrich component and layout contracts.
-3. If Figma MCP is unavailable or unauthenticated, ask the user to connect or authorize Figma MCP.
-4. If the user cannot authorize Figma MCP, continue in tokens-only mode and record the limitation in the compliance report.
-5. Do not require Figma MCP in CI. CI should validate committed `.design-system/` files and generated token artifacts.
+- `sync-design-contract`: Figma MCP may import Variables and enrich component contracts.
+- `create-screen` / `update-screen`: use committed `.design-system/` files and generated token artifacts; do not call Figma for every publishing task.
+
+Token import can start from Figma, but token build is primary for reproducible code and CI.
+
+1. If a Figma URL is provided, use Figma MCP to read Variables when token sync is requested.
+2. Save a raw Figma Variables snapshot when the repo has a place for it, for example `packages/design-tokens/src/figma.variables.raw.json`.
+3. Normalize the snapshot into committed token source JSON, for example `tokens/source/tokens.json` or `packages/design-tokens/src/tokens.normalized.json`.
+4. Build or verify tokens through Style Dictionary or an equivalent token pipeline.
+5. Use Figma MCP to enrich component and layout contracts when component metadata is available.
+6. If Figma MCP is unavailable or unauthenticated, ask the user to connect or authorize Figma MCP.
+7. If the user cannot authorize Figma MCP, continue from committed token source in tokens-only mode and record the limitation in the compliance report.
+8. Do not require Figma MCP in CI. CI should validate committed `.design-system/` files, token source, and generated token artifacts.
 
 ## Inputs
 
 Prefer these inputs, in order:
 
+- Figma design-system URL, when variable import or component enrichment is requested
 - committed token source JSON, for example `tokens/source/tokens.json`
 - Style Dictionary config, for example `style-dictionary.config.mjs`
 - `.design-system/design-system-manifest.json`
-- Figma design-system URL, when component enrichment is requested
 
 ## Outputs
 
@@ -29,11 +37,13 @@ Update or create:
 - `.design-system/component-spec.json`
 - `.design-system/layout-recipes.json`
 - `.design-system/token-policy.json`
+- raw Figma Variables snapshot, when imported
+- normalized token source JSON
 - generated token artifacts for web and native
 
 ## Token sync
 
-Run the repo token build when available:
+For Figma-backed sync, first import Variables through Figma MCP and commit the raw or normalized token source. Then run the repo token build when available:
 
 ```bash
 <pm> run build:tokens
@@ -47,6 +57,8 @@ packages/design-tokens/build/native/tokens.ts
 ```
 
 Do not invent token names from Figma layer styling. Product code should use semantic and component tokens that exist in the token source.
+
+During ordinary screen/component publishing, do not fetch live Figma tokens. Treat the committed token source and generated artifacts as the source of truth. If they appear stale, switch to a `sync-design-contract` task or record a follow-up.
 
 ## Figma MCP enrichment
 
@@ -92,6 +104,7 @@ When generated token artifacts are expected to be present, add `--require-token-
 
 The final report must state:
 
+- whether Figma Variables were imported or committed token source was reused
 - token source and token build command
 - whether Figma MCP enrichment ran
 - files changed under `.design-system/`
