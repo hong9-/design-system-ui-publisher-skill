@@ -3,12 +3,19 @@ name: Design Compliance
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   design-compliance:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      # actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 20
       - name: Install JavaScript dependencies
@@ -27,13 +34,13 @@ jobs:
 
           case "$runner" in
             pnpm)
-              if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+              if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile --ignore-scripts; else pnpm install --ignore-scripts; fi
               ;;
             yarn)
-              if [ -f yarn.lock ]; then yarn install --immutable || yarn install --frozen-lockfile; else yarn install; fi
+              if [ -f yarn.lock ]; then YARN_ENABLE_SCRIPTS=false yarn install --immutable || yarn install --frozen-lockfile --ignore-scripts; else YARN_ENABLE_SCRIPTS=false yarn install || yarn install --ignore-scripts; fi
               ;;
             npm)
-              if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then npm ci; else npm install; fi
+              if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
               ;;
             *)
               echo "No package.json found; skipping JavaScript dependency install."

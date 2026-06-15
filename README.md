@@ -17,7 +17,9 @@ Recommended repo additions:
 ```txt
 .design-system/
   design-system-manifest.json
+  design-system-manifest.schema.json
   component-spec.json
+  component-spec.schema.json
   layout-recipes.json
   token-policy.json
 tokens/
@@ -51,7 +53,7 @@ Add equivalents of these package-manager-agnostic scripts to your repo when read
 }
 ```
 
-`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. `ds:compliance-report` is report-only by default; use `ds:check` when CI should execute checks, enforce `manifest.requiredChecks`, and hard-fail on missing token source/config/artifacts. Use `ds:compliance-report:run-checks` for local orchestration before token artifacts are committed. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
+`ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. `ds:compliance-report` is report-only by default; use `ds:check` when CI should execute checks, enforce custom `manifest.requiredChecks`, and hard-fail on missing token source/config/artifacts. In run-checks mode, repo-native `ds:validate-contract` and `ds:scan-raw-styles` scripts are used when defined, and the bundled validators still run as built-in design gates so generator flags such as `--require-token-source` cannot be bypassed. Use `ds:compliance-report:run-checks` for local orchestration before token artifacts are committed. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
 
 `--platform all` auto-routes platform-specific scan rules by file path, extension, and React Native imports. Ambiguous JSX files are scanned with both web and native rules to avoid false-green mixed repos. Use `--platform web` or `--platform native` when scanning a known single-platform root.
 

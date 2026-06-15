@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(scriptDir, '..');
 const cwd = process.cwd();
+const cwdRealpath = fs.realpathSync(cwd);
+const skillRootRealpath = fs.realpathSync(skillRoot);
 const rawArgs = process.argv.slice(2);
 const roots = [];
 let platform = 'all';
@@ -38,13 +40,22 @@ if (roots.length === 0) roots.push('.');
 
 const findings = [];
 
+function assertExistingPathInsideRepoOrSkill(file) {
+  const real = fs.realpathSync(file);
+  if (!isInsidePath(real, cwdRealpath) && !isInsidePath(real, skillRootRealpath)) {
+    failUsage(`path must stay inside the repo or bundled skill after resolving symlinks: ${file}`);
+  }
+}
+
 function readRules(fileName) {
   const file = path.join(skillRoot, 'assets', fileName);
+  assertExistingPathInsideRepoOrSkill(file);
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
 function readJsonIfExists(file) {
   if (!fs.existsSync(file)) return null;
+  assertExistingPathInsideRepoOrSkill(file);
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
@@ -66,6 +77,7 @@ const ignoredDirs = new Set(commonRules.ignoredDirs);
 const ignoredPathIncludes = commonRules.ignoredPathIncludes || [];
 const dynamicIgnoredPaths = collectDynamicIgnoredPaths();
 const exts = new Set(commonRules.extensions);
+const visitedRealpaths = new Set();
 
 function compileRules(rules) {
   return (rules || []).map((rule) => ({
@@ -82,6 +94,8 @@ const nativePathRegex = /(?:^|\/)(?:apps\/)?(?:mobile|native|react-native|expo)(
 const webPathRegex = /(?:^|\/)(?:apps\/)?(?:web|frontend|browser)(?:\/|$)|\.web\.[^.]+$/;
 const jsxExtensions = new Set(['.jsx', '.tsx']);
 const stylesheetExtensions = new Set(['.css', '.scss']);
+const rawStyleNumberPropertyPattern = '(?:padding(?:Top|Right|Bottom|Left|Horizontal|Vertical|Block|Inline)?|margin(?:Top|Right|Bottom|Left|Horizontal|Vertical|Block|Inline)?|gap|rowGap|columnGap|radius|borderRadius|border(?:TopLeft|TopRight|BottomLeft|BottomRight)?Radius|fontSize|lineHeight|letterSpacing|fontWeight|width|height|minWidth|minHeight|maxWidth|maxHeight|top|right|bottom|left|inset|zIndex|padding(?:-(?:top|right|bottom|left|block|inline))?|margin(?:-(?:top|right|bottom|left|block|inline))?|row-gap|column-gap|border-radius|border-(?:top-left|top-right|bottom-left|bottom-right)-radius|font-size|line-height|letter-spacing|font-weight|min-width|min-height|max-width|max-height|z-index)';
+const tokenReferencePropertyPattern = '(?:color|bg|background|backgroundColor|background-color|border|borderColor|border-color|padding|paddingX|paddingY|paddingTop|paddingRight|paddingBottom|paddingLeft|paddingHorizontal|paddingVertical|margin|marginX|marginY|marginTop|marginRight|marginBottom|marginLeft|marginHorizontal|marginVertical|gap|rowGap|columnGap|radius|borderRadius|font|fontSize|lineHeight|letterSpacing|shadow)';
 const namedCssColors = new Set([
   'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black',
   'blanchedalmond', 'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse',
@@ -108,7 +122,10 @@ const namedCssColors = new Set([
   'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen'
 ]);
 const colorPropertyRegex = /(?:^|[^\w$-])((?:background(?:Color|-color)?|border(?:Color|-color)?|shadowColor|textDecorationColor|text-decoration-color|outlineColor|outline-color|caretColor|caret-color|color|fill|stroke))\s*[:=]\s*["']?([A-Za-z]+)["']?/g;
-const tokenReferenceRegex = /(?:^|[^\w$-])((?:color|bg|background|backgroundColor|background-color|border|borderColor|border-color|padding|paddingX|paddingY|paddingTop|paddingRight|paddingBottom|paddingLeft|paddingHorizontal|paddingVertical|margin|marginX|marginY|marginTop|marginRight|marginBottom|marginLeft|marginHorizontal|marginVertical|gap|rowGap|columnGap|radius|borderRadius|font|fontSize|lineHeight|letterSpacing|shadow))\s*[:=]\s*["']([^"']+)["']/g;
+const shorthandColorPropertyRegex = /(?:^|[^\w$-])((?:border(?:Top|Right|Bottom|Left)?|border(?:-top|-right|-bottom|-left)?|boxShadow|box-shadow|textShadow|text-shadow))\s*[:=]\s*["']?([^;"'\n}]+)["']?/g;
+const rawShadowRegex = /(?:^|[^\w$-])((?:boxShadow|box-shadow|textShadow|text-shadow))\s*[:=]\s*["']?[^;"'\n}]*-?\d+(?:\.\d+)?(?:px|rem|em)\b[^;"'\n}]*/g;
+const jsxRawStylePropRegex = new RegExp(`\\b(${rawStyleNumberPropertyPattern})\\s*=\\s*(?:\\{\\s*-?\\d+(?:\\.\\d+)?\\s*\\}|["']-?\\d+(?:\\.\\d+)?(?:px|rem|em|%)?["'])`, 'g');
+const tokenReferenceRegex = new RegExp(`(?:^|[^\\w$-])(${tokenReferencePropertyPattern})\\s*[:=]\\s*["']([^"']+)["']`, 'g');
 const allowedTokenPrefixes = Array.isArray(tokenPolicy.allowedTokenPrefixes) ? tokenPolicy.allowedTokenPrefixes : [];
 const disallowedTokenLayers = new Set([
   'primitive',
@@ -132,13 +149,21 @@ function walk(target) {
   const full = path.resolve(target);
   if (!isInsidePath(full, cwd)) failUsage(`scan root must stay inside the repo: ${target}`);
   if (!fs.existsSync(full)) return;
+  const real = fs.realpathSync(full);
+  if (!isInsidePath(real, cwdRealpath)) {
+    failUsage(`scan path must stay inside the repo after resolving symlinks: ${target}`);
+  }
+  const lstat = fs.lstatSync(full);
   const stat = fs.statSync(full);
   if (stat.isDirectory()) {
+    if (visitedRealpaths.has(real)) return;
+    visitedRealpaths.add(real);
     const name = path.basename(full);
     if (ignoredDirs.has(name)) return;
     for (const entry of fs.readdirSync(full)) walk(path.join(full, entry));
     return;
   }
+  if (lstat.isSymbolicLink() && !isInsidePath(real, cwdRealpath)) return;
   if (!stat.isFile()) return;
   if (!exts.has(path.extname(full))) return;
   if (!isProductFile(full)) return;
@@ -191,6 +216,32 @@ function isTokenLike(value) {
   return value.includes('.') || value.includes('/') || isDisallowedTokenReference(value);
 }
 
+function propertyTokenPrefixes(property) {
+  const normalized = property.replace(/-/g, '').toLowerCase();
+  if (['padding', 'paddingx', 'paddingy', 'paddingtop', 'paddingright', 'paddingbottom', 'paddingleft', 'paddinghorizontal', 'paddingvertical', 'margin', 'marginx', 'marginy', 'margintop', 'marginright', 'marginbottom', 'marginleft', 'marginhorizontal', 'marginvertical', 'gap', 'rowgap', 'columngap'].includes(normalized)) {
+    return ['space'];
+  }
+  if (normalized.includes('radius')) return ['radius'];
+  if (normalized.includes('font') || normalized === 'lineheight' || normalized === 'letterspacing') return ['font'];
+  if (normalized.includes('shadow')) return ['shadow'];
+  if (normalized.includes('border')) return ['color.border'];
+  if (normalized.includes('background') || normalized === 'bg') return ['color.bg'];
+  if (normalized === 'color') return ['color.text', 'color'];
+  return allowedTokenPrefixes;
+}
+
+function isKnownTokenOrAlias(value, property) {
+  const normalized = normalizeTokenName(value);
+  if (knownTokenNames.has(value) || knownTokenNames.has(normalized)) return true;
+  const prefixes = propertyTokenPrefixes(property).map(normalizeTokenName);
+  for (const token of knownTokenNames) {
+    const normalizedToken = normalizeTokenName(token);
+    const matchesPrefix = prefixes.some((prefix) => normalizedToken === prefix || normalizedToken.startsWith(`${prefix}.`));
+    if (matchesPrefix && normalizedToken.endsWith(`.${normalized}`)) return true;
+  }
+  return false;
+}
+
 function addTokenName(out, parts) {
   if (parts.length === 0) return;
   const dotted = parts.join('.');
@@ -230,6 +281,10 @@ function resolveRepoRelativePath(value) {
   const resolved = path.resolve(cwd, value);
   const relative = path.relative(cwd, resolved);
   if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
+  if (fs.existsSync(resolved)) {
+    const real = fs.realpathSync(resolved);
+    if (!isInsidePath(real, cwdRealpath)) return null;
+  }
   return resolved;
 }
 
@@ -270,12 +325,47 @@ function addFileDependencyDir(out, packageName) {
   addRepoRelativeDir(out, spec.slice('file:'.length));
 }
 
+function workspacePatterns() {
+  const workspaces = packageJson.workspaces;
+  if (Array.isArray(workspaces)) return workspaces;
+  if (isPlainObject(workspaces) && Array.isArray(workspaces.packages)) return workspaces.packages;
+  return [];
+}
+
+function workspaceCandidateDirs(pattern) {
+  if (typeof pattern !== 'string' || !pattern.trim()) return [];
+  const normalized = pattern.replace(/\\/g, '/');
+  if (normalized.includes('**')) return [];
+  if (!normalized.includes('*')) {
+    const direct = resolveRepoRelativePath(normalized);
+    return direct && fs.existsSync(direct) ? [direct] : [];
+  }
+  if (!normalized.endsWith('/*')) return [];
+  const base = resolveRepoRelativePath(normalized.slice(0, -2));
+  if (!base || !fs.existsSync(base)) return [];
+  return fs.readdirSync(base)
+    .map((entry) => path.join(base, entry))
+    .filter((candidate) => fs.existsSync(path.join(candidate, 'package.json')));
+}
+
+function addWorkspaceDependencyDir(out, packageName) {
+  if (typeof packageName !== 'string' || !packageName.trim()) return;
+  for (const pattern of workspacePatterns()) {
+    for (const dir of workspaceCandidateDirs(pattern)) {
+      const workspacePackage = readJsonIfExists(path.join(dir, 'package.json'));
+      if (workspacePackage?.name === packageName) out.add(path.normalize(dir));
+    }
+  }
+}
+
 function collectDynamicIgnoredPaths() {
   const dirs = new Set();
   const files = new Set();
 
   addFileDependencyDir(dirs, manifest?.packages?.ui);
   addFileDependencyDir(dirs, manifest?.packages?.tokens);
+  addWorkspaceDependencyDir(dirs, manifest?.packages?.ui);
+  addWorkspaceDependencyDir(dirs, manifest?.packages?.tokens);
 
   for (const outputPath of Object.values(manifest?.sources?.tokens?.outputs || {})) {
     addRepoRelativeFile(files, outputPath);
@@ -304,14 +394,43 @@ function scanNamedCssColors(file, text) {
     if (!namedCssColors.has(color)) continue;
     addFinding(file, lineFromIndex(text, match.index), 'named-css-color', match[0].trim());
   }
+
+  shorthandColorPropertyRegex.lastIndex = 0;
+  while ((match = shorthandColorPropertyRegex.exec(text))) {
+    const color = match[2].split(/\s+/).find((part) => namedCssColors.has(part.toLowerCase()));
+    if (!color) continue;
+    addFinding(file, lineFromIndex(text, match.index), 'named-css-color', match[0].trim());
+  }
+}
+
+function scanRawShadows(file, text) {
+  rawShadowRegex.lastIndex = 0;
+  let match;
+  while ((match = rawShadowRegex.exec(text))) {
+    addFinding(file, lineFromIndex(text, match.index), 'raw-shadow', match[0].trim());
+  }
+}
+
+function scanRawJsxStyleProps(file, text) {
+  jsxRawStylePropRegex.lastIndex = 0;
+  let match;
+  while ((match = jsxRawStylePropRegex.exec(text))) {
+    addFinding(file, lineFromIndex(text, match.index), 'raw-style-number', match[0].trim());
+  }
 }
 
 function scanTokenReferences(file, text) {
   tokenReferenceRegex.lastIndex = 0;
   let match;
   while ((match = tokenReferenceRegex.exec(text))) {
+    const property = match[1];
     const value = match[2].trim();
-    if (!isTokenLike(value)) continue;
+    if (!isTokenLike(value)) {
+      if (shouldEnforceKnownTokenNames && knownTokenNames.size > 0 && !isKnownTokenOrAlias(value, property)) {
+        addFinding(file, lineFromIndex(text, match.index), 'unknown-token-reference', match[0].trim());
+      }
+      continue;
+    }
     const normalized = normalizeTokenName(value);
     const snippet = match[0].trim();
 
@@ -325,10 +444,52 @@ function scanTokenReferences(file, text) {
       continue;
     }
 
-    if (shouldEnforceKnownTokenNames && knownTokenNames.size > 0 && !knownTokenNames.has(value) && !knownTokenNames.has(normalized)) {
+    if (shouldEnforceKnownTokenNames && knownTokenNames.size > 0 && !isKnownTokenOrAlias(value, property) && !knownTokenNames.has(normalized)) {
       addFinding(file, lineFromIndex(text, match.index), 'unknown-token-reference', snippet);
     }
   }
+}
+
+function maskComments(text) {
+  let out = '';
+  let i = 0;
+  let state = 'code';
+  while (i < text.length) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (state === 'code' && char === '/' && next === '/') {
+      out += '  ';
+      i += 2;
+      state = 'line-comment';
+      continue;
+    }
+    if (state === 'code' && char === '/' && next === '*') {
+      out += '  ';
+      i += 2;
+      state = 'block-comment';
+      continue;
+    }
+    if (state === 'line-comment') {
+      out += char === '\n' ? '\n' : ' ';
+      if (char === '\n') state = 'code';
+      i += 1;
+      continue;
+    }
+    if (state === 'block-comment') {
+      if (char === '*' && next === '/') {
+        out += '  ';
+        i += 2;
+        state = 'code';
+        continue;
+      }
+      out += char === '\n' ? '\n' : ' ';
+      i += 1;
+      continue;
+    }
+    out += char;
+    i += 1;
+  }
+  return out;
 }
 
 function parseReactNativeImportLocals(text) {
@@ -413,8 +574,11 @@ function inferPlatforms(file, text) {
 }
 
 function scanFile(file) {
+  const real = fs.realpathSync(file);
+  if (!isInsidePath(real, cwdRealpath)) failUsage(`scan file must stay inside the repo after resolving symlinks: ${file}`);
   const text = fs.readFileSync(file, 'utf8');
-  const filePlatforms = inferPlatforms(file, text);
+  const scanText = maskComments(text);
+  const filePlatforms = inferPlatforms(file, scanText);
   const activePatternRules = [
     ...commonPatternRules,
     ...(filePlatforms.has('web') ? webPatternRules : []),
@@ -422,11 +586,13 @@ function scanFile(file) {
   ];
 
   for (const pattern of activePatternRules) {
-    addMatches(file, pattern.type, pattern.regex, text);
+    addMatches(file, pattern.type, pattern.regex, pattern.type === 'design-lint-suppression' ? text : scanText);
   }
-  scanNamedCssColors(file, text);
-  scanTokenReferences(file, text);
-  if (filePlatforms.has('native')) scanReactNativePrimitives(file, text);
+  scanNamedCssColors(file, scanText);
+  scanRawShadows(file, scanText);
+  scanRawJsxStyleProps(file, scanText);
+  scanTokenReferences(file, scanText);
+  if (filePlatforms.has('native')) scanReactNativePrimitives(file, scanText);
 }
 
 for (const root of roots) walk(root);

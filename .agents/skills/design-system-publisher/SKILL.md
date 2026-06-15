@@ -179,7 +179,7 @@ node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --plat
 node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs
 ```
 
-`generate-compliance-report.mjs` is report-only by default. Use `--run-checks` only when you want it to execute `typecheck`, `lint`, `test`, contract validation, and source scan as an orchestrator. In run-checks mode, scripts listed in `manifest.requiredChecks` are hard failures when missing. CI-style `ds:check` scripts should pass `--require-token-source --require-token-artifacts` so missing token source, config, or generated artifacts are hard failures.
+`generate-compliance-report.mjs` is report-only by default. Use `--run-checks` only when you want it to execute `typecheck`, `lint`, `test`, contract validation, and source scan as an orchestrator. In run-checks mode, repo-native `ds:validate-contract` and `ds:scan-raw-styles` scripts run when present, and the bundled validators still run as built-in design gates so generator flags cannot be bypassed. Custom scripts listed in `manifest.requiredChecks` are hard failures when missing. CI-style `ds:check` scripts should pass `--require-token-source --require-token-artifacts` so missing token source, config, or generated artifacts are hard failures.
 
 `scan-raw-styles.mjs --platform all` auto-routes web/native-specific scan rules per file. Ambiguous JSX files are scanned with both web and native rules to avoid false-green mixed repos. Use `--platform web` or `--platform native` when a scan root is known to be single-platform.
 
@@ -204,20 +204,25 @@ End UI tasks with a concise Design Compliance Report containing:
 
 Use `assets/compliance-report.template.md` as the report shape.
 
-## Hard failures
+## Automated hard failures
 
-Do not consider the task complete if any hard failure remains:
+Do not consider the task complete if any automated hard failure remains:
 
 - TypeScript/build errors
 - raw color usage in product UI
 - unknown tokens
 - direct primitive usage where forbidden
+- suppressed design-system lint rules
+- new visual token or variant introduced without explicit design-system task
+
+## Manual review hard stops
+
+The bundled scripts cannot prove every design requirement. Do not consider the task complete until manual review or repo-specific tests also cover:
+
 - missing required states
 - missing icon-only labels
 - failed contrast or touch target checks, when a checker exists
 - visual regressions without explicit approval
-- suppressed design-system lint rules
-- new visual token or variant introduced without explicit design-system task
 
 ## Expected final response
 

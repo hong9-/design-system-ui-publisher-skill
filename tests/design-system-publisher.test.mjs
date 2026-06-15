@@ -82,6 +82,25 @@ function seedDesignContract(repo, overrides = {}) {
       bg: {
         surface: { $value: '#ffffff' },
       },
+      text: {
+        secondary: { $value: '#333333' },
+      },
+      border: {
+        default: { $value: '#dddddd' },
+      },
+    },
+    space: {
+      md: { $value: '16px' },
+      lg: { $value: '24px' },
+    },
+    radius: {
+      sm: { $value: '4px' },
+    },
+    font: {
+      body: { $value: '16px' },
+    },
+    shadow: {
+      card: { $value: '0 1px 2px rgba(0,0,0,0.1)' },
     },
   });
   writeFile(path.join(repo, tokenConfig), 'export default {};\n');
@@ -133,6 +152,35 @@ test('validate-design-contract rejects token paths outside the repo', () => {
   assert.match(combinedOutput(result), /manifest sources\.tokens\.source must stay inside the repo/);
 });
 
+test('validate-design-contract rejects token paths that symlink outside the repo', () => {
+  const repo = makeTempRepo('dsp-validate-symlink-paths');
+  const outside = makeTempRepo('dsp-validate-symlink-outside');
+  writeFile(path.join(outside, 'tokens.json'), '{"color":{"bg":{"surface":{"$value":"#fff"}}}}\n');
+  fs.symlinkSync(path.join(outside, 'tokens.json'), path.join(repo, 'tokens-link.json'));
+  seedDesignContract(repo, {
+    tokenSource: 'tokens-link.json',
+  });
+
+  const result = runScript('validate-design-contract.mjs', ['--require-token-source'], repo);
+
+  assert.equal(result.status, 1);
+  assert.match(combinedOutput(result), /must stay inside the repo after resolving symlinks/);
+});
+
+test('validate-design-contract rejects empty strict contracts', () => {
+  const repo = makeTempRepo('dsp-validate-empty-contract');
+  seedDesignContract(repo);
+  writeJson(path.join(repo, '.design-system/component-spec.json'), { components: {} });
+  writeJson(path.join(repo, '.design-system/layout-recipes.json'), { recipes: {} });
+
+  const result = runScript('validate-design-contract.mjs', [], repo);
+  const output = combinedOutput(result);
+
+  assert.equal(result.status, 1);
+  assert.match(output, /component spec must define at least one component/);
+  assert.match(output, /layout recipes must define at least one recipe/);
+});
+
 test('scan-raw-styles fails on forbidden product UI patterns', () => {
   const repo = makeTempRepo('dsp-scan-product');
   writeFile(
@@ -147,6 +195,77 @@ test('scan-raw-styles fails on forbidden product UI patterns', () => {
   assert.match(output, /raw-style-number/);
   assert.match(output, /named-css-color/);
   assert.match(output, /web-direct-dom-primitive/);
+});
+
+test('scan-raw-styles fails on raw numeric JSX style props', () => {
+  const repo = makeTempRepo('dsp-scan-jsx-raw-props');
+  writeFile(
+    path.join(repo, 'src/BadProps.tsx'),
+    'export function BadProps(){ return <Stack gap={17} padding={24} fontSize="13px">Bad</Stack>; }\n'
+  );
+
+  const result = runScript('scan-raw-styles.mjs', ['.', '--platform', 'web'], repo);
+
+  assert.equal(result.status, 1);
+  assert.match(combinedOutput(result), /raw-style-number/);
+});
+
+test('scan-raw-styles fails on unknown shorthand token props when token source exists', () => {
+  const repo = makeTempRepo('dsp-scan-short-token-props');
+  seedDesignContract(repo);
+  writeFile(
+    path.join(repo, 'src/BadToken.tsx'),
+    'export function BadToken(){ return <Stack gap="md" padding="mega" color="secondary">Bad</Stack>; }\n'
+  );
+
+  const result = runScript('scan-raw-styles.mjs', ['.', '--platform', 'web'], repo);
+  const output = combinedOutput(result);
+
+  assert.equal(result.status, 1);
+  assert.match(output, /unknown-token-reference/);
+  assert.match(output, /padding="mega"/);
+  assert.doesNotMatch(output, /gap="md"/);
+  assert.doesNotMatch(output, /color="secondary"/);
+});
+
+test('scan-raw-styles fails on CSS shorthand named colors and raw shadows', () => {
+  const repo = makeTempRepo('dsp-scan-css-shorthand');
+  writeFile(
+    path.join(repo, 'src/bad.css'),
+    '.banner { border: 1px solid red; box-shadow: 0 2px 8px black; }\n'
+  );
+
+  const result = runScript('scan-raw-styles.mjs', ['.', '--platform', 'web'], repo);
+  const output = combinedOutput(result);
+
+  assert.equal(result.status, 1);
+  assert.match(output, /named-css-color/);
+  assert.match(output, /raw-shadow/);
+});
+
+test('scan-raw-styles ignores forbidden patterns in comments', () => {
+  const repo = makeTempRepo('dsp-scan-comments');
+  writeFile(
+    path.join(repo, 'src/CommentOnly.tsx'),
+    '// <div style={{ padding: 17, color: "red" }}>example only</div>\nexport function CommentOnly(){ return <Stack />; }\n'
+  );
+
+  const result = runScript('scan-raw-styles.mjs', ['.', '--platform', 'web'], repo);
+
+  assert.equal(result.status, 0, combinedOutput(result));
+});
+
+test('scan-raw-styles still catches design lint suppressions in comments', () => {
+  const repo = makeTempRepo('dsp-scan-suppression-comments');
+  writeFile(
+    path.join(repo, 'src/Suppressed.tsx'),
+    '// eslint-disable-next-line design-system/no-raw-styles\nexport function Suppressed(){ return <Stack />; }\n'
+  );
+
+  const result = runScript('scan-raw-styles.mjs', ['.', '--platform', 'web'], repo);
+
+  assert.equal(result.status, 1);
+  assert.match(combinedOutput(result), /design-lint-suppression/);
 });
 
 test('scan-raw-styles auto-routes React Native files when platform is all', () => {
@@ -184,12 +303,50 @@ test('scan-raw-styles ignores local UI package paths declared through package fi
   assert.match(combinedOutput(result), /PASS design source scan/);
 });
 
+test('scan-raw-styles ignores local UI package paths declared through workspaces', () => {
+  const repo = makeTempRepo('dsp-scan-workspace-ui-package');
+  seedDesignContract(repo);
+  writeJson(path.join(repo, 'package.json'), {
+    dependencies: {
+      '@acme/ui': 'workspace:*',
+      '@acme/design-tokens': 'workspace:*',
+    },
+    workspaces: ['packages/*'],
+  });
+  writeJson(path.join(repo, 'packages/design-system-ui/package.json'), {
+    name: '@acme/ui',
+  });
+  writeFile(
+    path.join(repo, 'packages/design-system-ui/Button.tsx'),
+    'export function Button(){ return <button style={{ padding: 17 }}>OK</button>; }\n'
+  );
+
+  const result = runScript('scan-raw-styles.mjs', ['.', '--platform', 'web'], repo);
+
+  assert.equal(result.status, 0, combinedOutput(result));
+});
+
 test('scan-raw-styles rejects scan roots outside the repo', () => {
   const repo = makeTempRepo('dsp-scan-root-boundary');
   const result = runScript('scan-raw-styles.mjs', ['..', '--platform', 'web'], repo);
 
   assert.equal(result.status, 2);
   assert.match(combinedOutput(result), /scan root must stay inside the repo/);
+});
+
+test('scan-raw-styles rejects scan roots that symlink outside the repo', () => {
+  const repo = makeTempRepo('dsp-scan-symlink-root');
+  const outside = makeTempRepo('dsp-scan-symlink-outside');
+  writeFile(
+    path.join(outside, 'Leaked.tsx'),
+    'export function Leaked(){ return <div style={{ padding: 17 }}>Leaked</div>; }\n'
+  );
+  fs.symlinkSync(outside, path.join(repo, 'linked'));
+
+  const result = runScript('scan-raw-styles.mjs', ['linked', '--platform', 'web'], repo);
+
+  assert.equal(result.status, 2);
+  assert.match(combinedOutput(result), /after resolving symlinks/);
 });
 
 test('generate-compliance-report fails when a manifest-required custom script is missing', () => {
@@ -254,6 +411,91 @@ test('generate-compliance-report executes manifest-required custom scripts when 
   assert.match(report, /Status: PASS/);
 });
 
+test('generate-compliance-report runs repo-native design scripts before bundled fallbacks', () => {
+  const repo = makeTempRepo('dsp-required-native-design-script');
+  seedDesignContract(repo, { requiredChecks: ['ds:scan-raw-styles'] });
+  writeJson(path.join(repo, 'package.json'), {
+    scripts: {
+      'ds:scan-raw-styles': 'node -e "console.error(\'repo scan failed\'); process.exit(9)"',
+    },
+  });
+
+  const result = runScript(
+    'generate-compliance-report.mjs',
+    ['--run-checks', '--require-token-source', '--require-token-artifacts'],
+    repo
+  );
+  const report = fs.readFileSync(path.join(repo, 'design-compliance-report.generated.md'), 'utf8');
+
+  assert.equal(result.status, 1);
+  assert.match(report, /### repo-native ds:scan-raw-styles/);
+  assert.match(report, /Command: `npm run ds:scan-raw-styles -- --platform all`/);
+  assert.match(report, /repo scan failed/);
+});
+
+test('generate-compliance-report bundled validation still enforces token gates with repo-native scripts', () => {
+  const repo = makeTempRepo('dsp-native-validation-token-gates');
+  seedDesignContract(repo, { requiredChecks: ['ds:validate-contract'] });
+  fs.rmSync(path.join(repo, 'tokens/source/tokens.json'));
+  writeJson(path.join(repo, 'package.json'), {
+    scripts: {
+      'ds:validate-contract': 'node -e "process.exit(0)"',
+    },
+  });
+
+  const result = runScript(
+    'generate-compliance-report.mjs',
+    ['--run-checks', '--require-token-source'],
+    repo
+  );
+  const report = fs.readFileSync(path.join(repo, 'design-compliance-report.generated.md'), 'utf8');
+
+  assert.equal(result.status, 1);
+  assert.match(report, /### repo-native ds:validate-contract/);
+  assert.match(report, /### design contract validation/);
+  assert.match(report, /token source file is missing/);
+});
+
+test('generate-compliance-report redacts and safely fences command output', () => {
+  const repo = makeTempRepo('dsp-report-safe-output');
+  seedDesignContract(repo, { requiredChecks: ['test:a11y'] });
+  writeFile(
+    path.join(repo, 'scripts/print-secrets.mjs'),
+    [
+      'console.log("```");',
+      'console.log("API_TOKEN=abc123");',
+      'console.log("\\"API_TOKEN\\":\\"jsonsecret\\"");',
+      'console.log("API_TOKEN: colonsecret");',
+      'console.log("ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD");',
+      'console.log("```");',
+      '',
+    ].join('\n')
+  );
+  writeJson(path.join(repo, 'package.json'), {
+    scripts: {
+      'test:a11y': 'node scripts/print-secrets.mjs',
+    },
+  });
+
+  const result = runScript(
+    'generate-compliance-report.mjs',
+    ['--run-checks', '--require-token-source', '--require-token-artifacts'],
+    repo
+  );
+  const report = fs.readFileSync(path.join(repo, 'design-compliance-report.generated.md'), 'utf8');
+
+  assert.equal(result.status, 0, combinedOutput(result));
+  assert.doesNotMatch(report, /API_TOKEN=abc123/);
+  assert.doesNotMatch(report, /jsonsecret/);
+  assert.doesNotMatch(report, /colonsecret/);
+  assert.doesNotMatch(report, /ghp_abcdefghijklmnopqrstuvwxyz/);
+  assert.match(report, /API_TOKEN=\[REDACTED\]/);
+  assert.match(report, /"API_TOKEN":\[REDACTED\]/);
+  assert.match(report, /API_TOKEN: \[REDACTED\]/);
+  assert.match(report, /\[REDACTED_TOKEN\]/);
+  assert.match(report, /````txt/);
+});
+
 test('generate-compliance-report rejects output paths outside the repo', () => {
   const repo = makeTempRepo('dsp-report-out-boundary');
   seedDesignContract(repo);
@@ -262,4 +504,17 @@ test('generate-compliance-report rejects output paths outside the repo', () => {
 
   assert.equal(result.status, 2);
   assert.match(combinedOutput(result), /--out must stay inside the repo/);
+});
+
+test('generate-compliance-report rejects symlinked output parents outside the repo', () => {
+  const repo = makeTempRepo('dsp-report-out-symlink-boundary');
+  const outside = makeTempRepo('dsp-report-outside');
+  seedDesignContract(repo);
+  fs.symlinkSync(outside, path.join(repo, 'reports'));
+
+  const result = runScript('generate-compliance-report.mjs', ['--out', 'reports/report.md'], repo);
+
+  assert.equal(result.status, 2);
+  assert.match(combinedOutput(result), /--out parent must stay inside the repo after resolving symlinks/);
+  assert.equal(fs.existsSync(path.join(outside, 'report.md')), false);
 });

@@ -97,13 +97,17 @@ The report generator is report-only by default. To use it as a single local orch
 node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks
 ```
 
-In run-checks mode, scripts listed in `manifest.requiredChecks` fail when they are missing or cannot be executed.
+In run-checks mode, repo-native `ds:validate-contract` and `ds:scan-raw-styles` scripts run when they are present, and the bundled validators still run as built-in design gates so generator flags cannot be bypassed. Custom scripts listed in `manifest.requiredChecks` fail when they are missing or cannot be executed.
+
+Generated reports are draft scaffolds until the manual sections are completed. Automated check status alone is not proof that required states, accessibility behavior, or visual review are complete.
 
 For CI, make token source, token config, and generated token artifacts hard failures:
 
 ```bash
 node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts
 ```
+
+For pull request workflows, keep permissions read-only and do not move this job to `pull_request_target`; dependency installation and package scripts execute repository-controlled code.
 
 ## Gate 4: Accessibility
 
@@ -137,10 +141,13 @@ Visual diffs require review approval.
 
 - raw colors
 - unknown tokens
-- missing required states
 - direct primitive use where forbidden
-- accessibility label violations
 - failed typecheck/build
+
+Manual review hard stops unless covered by repo-specific tests:
+
+- missing required states
+- accessibility label violations
 - failed visual regression without approval
 
 ## Warnings

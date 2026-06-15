@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const cwd = process.cwd();
+const cwdRealpath = fs.realpathSync(cwd);
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(scriptDir, '..');
 const rawArgs = process.argv.slice(2);
@@ -81,11 +82,24 @@ const candidates = {
   ],
 };
 
+function isInsidePath(file, directory) {
+  const relative = path.relative(directory, file);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function assertExistingRepoPath(file, label) {
+  const real = fs.realpathSync(file);
+  if (!isInsidePath(real, cwdRealpath)) {
+    throw new Error(`${label} must stay inside the repo after resolving symlinks: ${file}`);
+  }
+}
+
 function readFirst(name, paths) {
   for (const candidate of paths) {
     const { file, fallback } = candidate;
     if (fallback && !allowFallback) continue;
     if (fs.existsSync(file)) {
+      if (!fallback) assertExistingRepoPath(file, name);
       return {
         file,
         fallback: Boolean(fallback),
@@ -146,6 +160,13 @@ function resolveRepoPath(value, label) {
     errors.push(`${label} must stay inside the repo: ${value}`);
     return null;
   }
+  if (fs.existsSync(resolved)) {
+    const real = fs.realpathSync(resolved);
+    if (!isInsidePath(real, cwdRealpath)) {
+      errors.push(`${label} must stay inside the repo after resolving symlinks: ${value}`);
+      return null;
+    }
+  }
   return resolved;
 }
 
@@ -194,6 +215,8 @@ assert(isPlainObject(manifest.value.sources), 'manifest must define sources obje
 assert(isPlainObject(manifest.value.sources?.tokens), 'manifest sources.tokens must define token pipeline');
 assert(isPlainObject(componentSpec.value.components), 'component spec must contain a components object');
 assert(isPlainObject(recipes.value.recipes), 'layout recipes must contain a recipes object');
+assert(Object.keys(componentSpec.value.components || {}).length > 0, 'component spec must define at least one component in strict mode');
+assert(Object.keys(recipes.value.recipes || {}).length > 0, 'layout recipes must define at least one recipe in strict mode');
 assert(Array.isArray(tokenPolicy.value.allowedLayersInProductCode), 'token policy must define allowedLayersInProductCode');
 assert(Array.isArray(tokenPolicy.value.allowedTokenPrefixes), 'token policy must define allowedTokenPrefixes array');
 

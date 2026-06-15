@@ -5,9 +5,15 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const skillRoot = path.resolve(scriptDir, '..');
 const cwd = process.cwd();
+const cwdRealpath = fs.realpathSync(cwd);
+const skillRootRealpath = fs.realpathSync(skillRoot);
 const now = new Date().toISOString();
 const rawArgs = process.argv.slice(2);
+const checkTimeoutMs = 5 * 60 * 1000;
+const checkMaxBuffer = 10 * 1024 * 1024;
+const reportOutputLimit = 12000;
 
 let out = 'design-compliance-report.generated.md';
 let platform = 'all';
@@ -63,9 +69,24 @@ function exists(p) {
   return fs.existsSync(path.join(cwd, p));
 }
 
+function isInsidePath(file, directory) {
+  const relative = path.relative(directory, file);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
 function isInsideRepo(resolvedPath) {
   const relative = path.relative(cwd, resolvedPath);
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function nearestExistingAncestor(file) {
+  let current = file;
+  while (!fs.existsSync(current)) {
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+  return current;
 }
 
 function resolveOutputPath(value) {
@@ -73,12 +94,41 @@ function resolveOutputPath(value) {
   if (!isInsideRepo(resolved)) {
     failUsage(`--out must stay inside the repo: ${value}`);
   }
+  const existingAncestor = nearestExistingAncestor(path.dirname(resolved));
+  if (!existingAncestor) failUsage(`--out parent could not be resolved: ${value}`);
+  const parentRealpath = fs.realpathSync(existingAncestor);
+  if (!isInsidePath(parentRealpath, cwdRealpath)) {
+    failUsage(`--out parent must stay inside the repo after resolving symlinks: ${value}`);
+  }
+  if (fs.existsSync(resolved)) {
+    const stat = fs.lstatSync(resolved);
+    if (stat.isSymbolicLink()) failUsage(`--out must not be a symlink: ${value}`);
+    const real = fs.realpathSync(resolved);
+    if (!isInsidePath(real, cwdRealpath)) {
+      failUsage(`--out must stay inside the repo after resolving symlinks: ${value}`);
+    }
+  }
   return resolved;
+}
+
+function assertExistingPathInsideRepo(file) {
+  const real = fs.realpathSync(file);
+  if (!isInsidePath(real, cwdRealpath)) {
+    failUsage(`path must stay inside the repo after resolving symlinks: ${file}`);
+  }
+}
+
+function assertExistingPathInsideRepoOrSkill(file) {
+  const real = fs.realpathSync(file);
+  if (!isInsidePath(real, cwdRealpath) && !isInsidePath(real, skillRootRealpath)) {
+    failUsage(`path must stay inside the repo or bundled skill after resolving symlinks: ${file}`);
+  }
 }
 
 function readPackageJson() {
   const packagePath = path.join(cwd, 'package.json');
   if (!fs.existsSync(packagePath)) return null;
+  assertExistingPathInsideRepo(packagePath);
   return JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 }
 
@@ -95,26 +145,51 @@ function detectPackageManager(packageJson) {
   return null;
 }
 
-function scriptArgs(packageManager, scriptName) {
+function scriptArgs(packageManager, scriptName, extraArgs = []) {
   if (!packageManager) return null;
-  return ['run', scriptName];
+  return extraArgs.length > 0 ? ['run', scriptName, '--', ...extraArgs] : ['run', scriptName];
+}
+
+function formatCommand(command, args) {
+  return [command, ...args]
+    .map((part) => (/^[A-Za-z0-9_@%+=:,./-]+$/.test(part) ? part : JSON.stringify(part)))
+    .join(' ');
+}
+
+function redactOutput(value) {
+  return value
+    .replace(/\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,})\b/g, '[REDACTED_TOKEN]')
+    .replace(/(["']?[\w.-]*(?:TOKEN|SECRET|PASSWORD|PASS|CREDENTIAL|AUTH|API[_-]?KEY|PRIVATE[_-]?KEY|ACCESS[_-]?KEY)[\w.-]*["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,}]+)/gi, '$1[REDACTED]')
+    .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/g, '$1 [REDACTED]');
+}
+
+function prepareOutput(value) {
+  const redacted = redactOutput(value || '');
+  if (redacted.length <= reportOutputLimit) return redacted;
+  return `${redacted.slice(0, reportOutputLimit)}\n...output truncated at ${reportOutputLimit} characters...`;
 }
 
 function runCheck(name, command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd,
     encoding: 'utf8',
+    maxBuffer: checkMaxBuffer,
     shell: process.platform === 'win32',
+    timeout: checkTimeoutMs,
   });
-  const output = `${result.stdout || ''}${result.stderr || ''}`.trim();
+  const rawOutput = `${result.stdout || ''}${result.stderr || ''}`.trim();
   const status = result.error ? 1 : result.status ?? 1;
+  const errorOutput = result.error
+    ? `${result.error.message}${result.error.code === 'ETIMEDOUT' ? ` after ${checkTimeoutMs}ms` : ''}`
+    : rawOutput;
+  const output = prepareOutput([options.note, errorOutput].filter(Boolean).join('\n').trim());
   return {
     name,
-    command: [command, ...args].join(' '),
+    command: formatCommand(command, args),
     critical: options.critical !== false,
     skipped: false,
     status,
-    output: result.error ? result.error.message : output,
+    output,
   };
 }
 
@@ -136,6 +211,7 @@ const checks = [];
 
 function readJsonIfExists(file) {
   if (!fs.existsSync(file)) return null;
+  assertExistingPathInsideRepoOrSkill(file);
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
@@ -143,15 +219,16 @@ function readManifestForChecks() {
   const repoManifest = readJsonIfExists(path.join(cwd, '.design-system/design-system-manifest.json'));
   if (repoManifest) return repoManifest;
   if (!allowFallback) return null;
-  return readJsonIfExists(path.join(scriptDir, '..', 'assets/design-system-manifest.example.json'));
+  return readJsonIfExists(path.join(skillRoot, 'assets/design-system-manifest.example.json'));
 }
 
 const manifestForChecks = readManifestForChecks();
-const requiredChecks = new Set(
-  Array.isArray(manifestForChecks?.requiredChecks)
-    ? manifestForChecks.requiredChecks.filter((check) => typeof check === 'string' && check.trim())
-    : []
-);
+const requiredCheckPattern = /^[A-Za-z0-9:_@./-]+$/;
+const rawRequiredChecks = Array.isArray(manifestForChecks?.requiredChecks)
+  ? manifestForChecks.requiredChecks.filter((check) => typeof check === 'string' && check.trim())
+  : [];
+const invalidRequiredChecks = rawRequiredChecks.filter((check) => !requiredCheckPattern.test(check));
+const requiredChecks = new Set(rawRequiredChecks.filter((check) => requiredCheckPattern.test(check)));
 const builtInDesignChecks = new Set([
   'ds:validate-contract',
   'ds:scan-raw-styles',
@@ -173,6 +250,13 @@ function failedRequiredCheck(name, reason) {
     status: 1,
     output: reason,
   };
+}
+
+for (const invalidCheck of invalidRequiredChecks) {
+  checks.push(failedRequiredCheck(
+    'manifest requiredChecks',
+    `manifest requiredChecks contains an invalid script/check name: ${JSON.stringify(invalidCheck)}`
+  ));
 }
 
 function addPackageScriptCheck(scriptName) {
@@ -202,6 +286,24 @@ function collectPackageChecks() {
 
 for (const scriptName of collectPackageChecks()) addPackageScriptCheck(scriptName);
 
+function addDesignCheck(scriptName, displayName, fallbackArgs, nativeExtraArgs = []) {
+  if (!runChecks) {
+    checks.push(skipCheck(displayName, 'not run by report generator; pass --run-checks to execute checks'));
+  } else if (packageScripts[scriptName] && packageManager) {
+    checks.push(runCheck(`repo-native ${scriptName}`, packageManager, scriptArgs(packageManager, scriptName, nativeExtraArgs)));
+    checks.push(runCheck(displayName, 'node', fallbackArgs, {
+      note: `bundled ${displayName} gate also ran to enforce generator flags`,
+    }));
+  } else if (packageScripts[scriptName]) {
+    const reason = 'package manager could not be detected';
+    checks.push(isRequiredCheck(scriptName) ? failedRequiredCheck(displayName, reason) : skipCheck(displayName, reason));
+  } else {
+    checks.push(runCheck(displayName, 'node', fallbackArgs, {
+      note: `package.json script "${scriptName}" is not defined; using bundled fallback`,
+    }));
+  }
+}
+
 if (runChecks) {
   const validationArgs = [
     path.join(scriptDir, 'validate-design-contract.mjs'),
@@ -210,28 +312,26 @@ if (runChecks) {
     ...(requireTokenArtifacts ? ['--require-token-artifacts'] : []),
   ];
 
-  checks.push(runCheck(
-    'design contract validation',
-    'node',
-    validationArgs
-  ));
+  const validationExtraArgs = [
+    ...(allowFallback ? ['--allow-fallback'] : []),
+    ...(requireTokenSource ? ['--require-token-source'] : []),
+    ...(requireTokenArtifacts ? ['--require-token-artifacts'] : []),
+  ];
 
-  checks.push(runCheck(
-    'design source scan',
-    'node',
-    [
-      path.join(scriptDir, 'scan-raw-styles.mjs'),
-      '.',
-      '--platform',
-      platform,
-    ]
-  ));
+  addDesignCheck('ds:validate-contract', 'design contract validation', validationArgs, validationExtraArgs);
+  addDesignCheck('ds:scan-raw-styles', 'design source scan', [
+    path.join(scriptDir, 'scan-raw-styles.mjs'),
+    '.',
+    '--platform',
+    platform,
+  ], ['--platform', platform]);
 } else {
   checks.push(skipCheck('design contract validation', 'not run by report generator; pass --run-checks to execute checks'));
   checks.push(skipCheck('design source scan', 'not run by report generator; pass --run-checks to execute checks'));
 }
 
 function statusLabel(check) {
+  if (!check) return 'TODO';
   if (check.skipped) return 'SKIP';
   return check.status === 0 ? 'PASS' : 'FAIL';
 }
@@ -242,15 +342,18 @@ function statusFor(names) {
 }
 
 function formatCheck(check) {
+  const output = check.output || '(no output)';
+  const fence = '`'.repeat(Math.max(3, [...output.matchAll(/`+/g)].reduce((max, match) => Math.max(max, match[0].length + 1), 3)));
+  const safeName = check.name.replace(/[\r\n]+/g, ' ');
   return [
-    `### ${check.name}`,
+    `### ${safeName}`,
     '',
     `Status: ${statusLabel(check)}`,
-    check.command ? `Command: \`${check.command}\`` : '',
+    check.command ? `Command: \`${check.command.replace(/`/g, '\\`')}\`` : '',
     '',
-    '```txt',
-    check.output || '(no output)',
-    '```',
+    `${fence}txt`,
+    output,
+    fence,
     '',
   ].filter(Boolean).join('\n');
 }
@@ -258,6 +361,8 @@ function formatCheck(check) {
 const report = `# Design Compliance Report
 
 Generated at: ${now}
+
+> Draft scaffold: automated checks are summarized here, but the manual sections below must be completed before this report is treated as compliance proof.
 
 ## Scope
 
@@ -279,14 +384,14 @@ Generated at: ${now}
 
 ${checks.map(formatCheck).join('\n')}
 
-## Design System Usage
+## Design System Usage - Manual Completion Required
 
 - Components used: TODO
 - Tokens used: TODO
 - New tokens introduced: none / TODO
 - New variants introduced: none / TODO
 
-## Required States
+## Required States - Manual Completion Required
 
 - loading: TODO
 - empty: TODO
@@ -294,7 +399,7 @@ ${checks.map(formatCheck).join('\n')}
 - success: TODO
 - disabled/submitting, if applicable: TODO
 
-## Static Compliance
+## Static Compliance - Manual Completion Required
 
 - Raw colors: TODO
 - Raw spacing/sizing: TODO
@@ -303,7 +408,7 @@ ${checks.map(formatCheck).join('\n')}
 - Inline style bypasses: TODO
 - Unknown tokens: TODO
 
-## Accessibility
+## Accessibility - Manual Completion Required
 
 - Icon-only labels: TODO
 - Form labels: TODO
