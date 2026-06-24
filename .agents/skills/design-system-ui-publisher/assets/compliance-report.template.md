@@ -14,6 +14,25 @@
 - New tokens introduced: none / list and justification
 - New variants introduced: none / list and justification
 
+## Component Composition
+
+- Screen:
+- Sections:
+- Reusable component candidates:
+- Screen-only layout pieces:
+- Props/slots/states summary:
+- Required testIDs preserved:
+
+## Transition Contract
+
+- Entry route:
+- Primary action destination:
+- Secondary action destination:
+- Back/cancel behavior:
+- Success destination:
+- Error recovery:
+- Deviations:
+
 ## Required States
 
 - loading:
@@ -38,6 +57,20 @@
 - Dialog titles:
 - Disabled/loading interaction behavior:
 - Keyboard/screen-reader checks, if applicable:
+
+## Visual Quality Review
+
+- Review basis: project profile / generic review only / not reviewed
+- Project visual quality profile:
+- Decision: pass / pass with notes / review required / block / not reviewed / generic review only
+- Critical flow requirements:
+- Dimension notes:
+
+## Design-System Gaps
+
+- Missing component/slot/state/variant/token/recipe/content/flow:
+- Severity: blocking / deviation / follow-up
+- Proposal path, if created:
 
 ## Checks Run
 

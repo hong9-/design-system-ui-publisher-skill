@@ -16,6 +16,22 @@ screen:
   recipe: list-screen
   route: /example
 
+transitionContract:
+  entryRoute: /example
+  primaryActionDestination:
+  secondaryActionDestination:
+  backCancelBehavior:
+  successDestination:
+  errorRecovery:
+
+composition:
+  screen: ExampleScreen
+  sections:
+    - list
+  reusableComponents: []
+  screenOnlyLayout: []
+  requiredTestIDs: []
+
 intent:
   primaryGoal: 사용자가 항목 목록을 확인한다
 
@@ -33,6 +49,18 @@ states:
     - error
     - success
 
+designSystemInputs:
+  components: []
+  tokens: []
+  variants: []
+  missing: []
+
+visualQualityReview:
+  basis: not reviewed
+  profilePath:
+  criticalFlowRequirement:
+  knownRisks: []
+
 constraints:
   useOnlyDesignSystemComponents: true
   noRawStyles: true
@@ -44,9 +72,13 @@ constraints:
 ## Agent output requirements
 
 - implementation files
+- component composition summary
+- transition contract coverage
 - state stories/fixtures
 - tests or test notes
 - compliance report
+- visual quality review status
+- design-system gap list
 - list of commands run
 - list of deviations
 

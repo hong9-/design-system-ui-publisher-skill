@@ -73,6 +73,25 @@ test('skill documents Figma variable import without bloating SKILL.md', () => {
   assert.ok(skill.split('\n').length < 260);
 });
 
+test('skill documents visual quality review without making it a scorecard', () => {
+  const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+  const reference = fs.readFileSync(
+    path.join(referencesDir, 'visual-quality-review-gate.md'),
+    'utf8'
+  );
+  const profileTemplate = fs.readFileSync(
+    path.join(assetsDir, 'visual-quality-profile.template.md'),
+    'utf8'
+  );
+
+  assert.match(skill, /visual-quality-review-gate\.md/);
+  assert.match(skill, /visual quality status/);
+  assert.match(reference, /does not invent product aesthetics/);
+  assert.match(reference, /generic review only/);
+  assert.doesNotMatch(reference, /finalScore|weighted score|0-100/);
+  assert.match(profileTemplate, /Critical Flows/);
+});
+
 function seedDesignContract(repo, overrides = {}) {
   const tokenSource = overrides.tokenSource || 'tokens/source/tokens.json';
   const tokenConfig = overrides.tokenConfig || 'style-dictionary.config.mjs';
@@ -536,6 +555,20 @@ test('generate-compliance-report rejects output paths outside the repo', () => {
 
   assert.equal(result.status, 2);
   assert.match(combinedOutput(result), /--out must stay inside the repo/);
+});
+
+test('generate-compliance-report includes manual publishing brief review sections', () => {
+  const repo = makeTempRepo('dsp-report-brief-sections');
+  seedDesignContract(repo);
+
+  const result = runScript('generate-compliance-report.mjs', [], repo);
+  const report = fs.readFileSync(path.join(repo, 'design-compliance-report.generated.md'), 'utf8');
+
+  assert.equal(result.status, 0, combinedOutput(result));
+  assert.match(report, /## Component Composition - Manual Completion Required/);
+  assert.match(report, /## Transition Contract - Manual Completion Required/);
+  assert.match(report, /## Visual Quality Review - Manual Completion Required/);
+  assert.match(report, /## Design-System Gaps - Manual Completion Required/);
 });
 
 test('generate-compliance-report rejects symlinked output parents outside the repo', () => {

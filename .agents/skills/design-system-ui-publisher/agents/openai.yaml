@@ -1,4 +1,4 @@
 interface:
   display_name: "Design System UI Publisher"
-  short_description: "Publish React and React Native UI from design-system contracts."
-  default_prompt: "Use design-system-ui-publisher to implement UI from a Figma-derived design-system contract, existing tokens, component specs, layout recipes, and compliance checks."
+  short_description: "Publish UI from design-system contracts."
+  default_prompt: "Use $design-system-ui-publisher to implement UI from a Figma-derived design-system contract, existing tokens, component specs, layout recipes, and compliance checks."

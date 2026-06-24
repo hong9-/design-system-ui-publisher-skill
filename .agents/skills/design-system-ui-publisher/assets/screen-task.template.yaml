@@ -9,6 +9,22 @@ screen:
   recipe: list-screen
   route: /example
 
+transitionContract:
+  entryRoute: /example
+  primaryActionDestination:
+  secondaryActionDestination:
+  backCancelBehavior:
+  successDestination:
+  errorRecovery:
+
+composition:
+  screen: ExampleScreen
+  sections:
+    - main
+  reusableComponents: []
+  screenOnlyLayout: []
+  requiredTestIDs: []
+
 intent:
   primaryGoal: 사용자가 주요 정보를 확인한다
   secondaryGoal: 필요한 후속 액션을 수행한다
@@ -38,8 +54,22 @@ states:
 actions:
   primary:
     label: 계속하기
+    destination:
   retry:
     label: 다시 시도
+    destination:
+
+designSystemInputs:
+  components: []
+  tokens: []
+  variants: []
+  missing: []
+
+visualQualityReview:
+  basis: not reviewed
+  profilePath:
+  criticalFlowRequirement:
+  knownRisks: []
 
 constraints:
   useOnlyDesignSystemComponents: true

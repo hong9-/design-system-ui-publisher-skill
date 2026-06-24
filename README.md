@@ -22,6 +22,7 @@ Recommended repo additions:
   component-spec.schema.json
   layout-recipes.json
   token-policy.json
+  visual-quality-profile.md # optional
 tokens/
   source/
     tokens.json
@@ -62,7 +63,7 @@ Add equivalents of these package-manager-agnostic scripts to your repo when read
 Ask Codex to use the `design-system-ui-publisher` skill for UI work such as:
 
 ```txt
-Use the design-system-ui-publisher skill. Create OrderHistoryScreen for web and native using the list-screen recipe. Implement loading, empty, error, and success states. Use only @my/ui components and existing design tokens. Add stories/tests and produce a design compliance report.
+Use the design-system-ui-publisher skill. Create OrderHistoryScreen for web and native using the list-screen recipe. Treat the screen task as the Publishing Brief, cover loading/empty/error/success states, record component composition and transition coverage, use only @my/ui components and existing design tokens, add stories/tests, and produce a design compliance report.
 ```
 
 The most important file is:
@@ -82,3 +83,5 @@ Templates and example contracts live under:
 ```txt
 .agents/skills/design-system-ui-publisher/assets/
 ```
+
+Use `assets/visual-quality-profile.template.md` if a project needs product-specific visual quality review rules.

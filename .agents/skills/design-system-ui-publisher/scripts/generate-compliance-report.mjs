@@ -358,6 +358,12 @@ function formatCheck(check) {
   ].filter(Boolean).join('\n');
 }
 
+const visualQualityProfile = [
+  '.design-system/visual-quality-profile.md',
+  '.design-system/visual-quality-profile.yaml',
+  '.design-system/visual-quality-profile.json',
+].find((candidate) => exists(candidate));
+
 const report = `# Design Compliance Report
 
 Generated at: ${now}
@@ -376,6 +382,7 @@ Generated at: ${now}
 - .design-system/component-spec.json: ${exists('.design-system/component-spec.json') ? 'present' : 'missing, fallback examples may be used'}
 - .design-system/layout-recipes.json: ${exists('.design-system/layout-recipes.json') ? 'present' : 'missing, fallback examples may be used'}
 - .design-system/token-policy.json: ${exists('.design-system/token-policy.json') ? 'present' : 'missing, fallback examples may be used'}
+- visual quality profile: ${visualQualityProfile || 'not found'}
 - package manager: ${packageManager || 'not detected'}
 - manifest required checks: ${requiredChecks.size > 0 ? [...requiredChecks].join(', ') : 'not available'}
 - check execution mode: ${runChecks ? 'run-checks' : 'report-only'}
@@ -390,6 +397,25 @@ ${checks.map(formatCheck).join('\n')}
 - Tokens used: TODO
 - New tokens introduced: none / TODO
 - New variants introduced: none / TODO
+
+## Component Composition - Manual Completion Required
+
+- Screen: TODO
+- Sections: TODO
+- Reusable component candidates: TODO
+- Screen-only layout pieces: TODO
+- Props/slots/states summary: TODO
+- Required testIDs preserved: TODO
+
+## Transition Contract - Manual Completion Required
+
+- Entry route: TODO
+- Primary action destination: TODO
+- Secondary action destination: TODO
+- Back/cancel behavior: TODO
+- Success destination: TODO
+- Error recovery: TODO
+- Deviations: TODO
 
 ## Required States - Manual Completion Required
 
@@ -415,6 +441,20 @@ ${checks.map(formatCheck).join('\n')}
 - Dialog titles: TODO
 - Disabled/loading interaction behavior: TODO
 - Keyboard/screen-reader checks, if applicable: TODO
+
+## Visual Quality Review - Manual Completion Required
+
+- Review basis: ${visualQualityProfile ? 'project profile' : 'generic review only / not reviewed'}
+- Project visual quality profile: ${visualQualityProfile || 'none'}
+- Decision: pass / pass with notes / review required / block / not reviewed / generic review only
+- Critical flow requirements: TODO
+- Dimension notes: TODO
+
+## Design-System Gaps - Manual Completion Required
+
+- Missing component/slot/state/variant/token/recipe/content/flow: TODO
+- Severity: blocking / deviation / follow-up
+- Proposal path, if created: TODO
 
 ## Checks Run
 

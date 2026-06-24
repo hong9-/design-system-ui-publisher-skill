@@ -26,6 +26,30 @@ slots:
   - description
   - actions
 
+states:
+  required:
+    - default
+    - loading
+    - error
+
+accessibility:
+  role:
+  labels: []
+  keyboardBehavior:
+
+testIDs:
+  required: []
+
+designSystemInputs:
+  tokens: []
+  variants: []
+  missing: []
+
+visualQualityReview:
+  basis: not reviewed
+  profilePath:
+  knownRisks: []
+
 constraints:
   shareTypesAcrossPlatforms: true
   splitImplementationByPlatform: true

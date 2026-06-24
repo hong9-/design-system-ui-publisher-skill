@@ -13,6 +13,25 @@
 - New tokens introduced: none
 - New variants introduced: none
 
+## Component Composition
+
+- Screen: OrderHistoryScreen
+- Sections: header, filter summary, order list
+- Reusable component candidates: OrderSummaryRow
+- Screen-only layout pieces: list spacing and empty-state placement
+- Props/slots/states summary: title, description, rows, actions; loading/empty/error/success
+- Required testIDs preserved: order-history-screen, order-history-retry
+
+## Transition Contract
+
+- Entry route: /orders
+- Primary action destination: order detail route
+- Secondary action destination: none
+- Back/cancel behavior: app shell back behavior
+- Success destination: stays on order list
+- Error recovery: retry action reloads orders
+- Deviations: none
+
 ## Required States
 
 - loading: yes
@@ -35,6 +54,20 @@
 - Form labels: n/a
 - Dialog titles: n/a
 - Disabled/loading behavior: loading state prevents actions
+
+## Visual Quality Review
+
+- Review basis: generic review only
+- Project visual quality profile: none
+- Decision: pass with notes
+- Critical flow requirements: none
+- Dimension notes: hierarchy, density, and state treatment reviewed from story fixtures
+
+## Design-System Gaps
+
+- Missing component/slot/state/variant/token/recipe/content/flow: none
+- Severity: n/a
+- Proposal path, if created: n/a
 
 ## Checks Run
 

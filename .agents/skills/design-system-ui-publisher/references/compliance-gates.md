@@ -99,7 +99,7 @@ node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-repor
 
 In run-checks mode, repo-native `ds:validate-contract` and `ds:scan-raw-styles` scripts run when they are present, and the bundled validators still run as built-in design gates so generator flags cannot be bypassed. Custom scripts listed in `manifest.requiredChecks` fail when they are missing or cannot be executed.
 
-Generated reports are draft scaffolds until the manual sections are completed. Automated check status alone is not proof that required states, accessibility behavior, or visual review are complete.
+Generated reports are draft scaffolds until the manual sections are completed. Automated check status alone is not proof that required states, component composition, transition coverage, accessibility behavior, visual quality review, or DS gap classification are complete.
 
 For CI, make token source, token config, and generated token artifacts hard failures:
 
@@ -137,6 +137,18 @@ Run when available:
 
 Visual diffs require review approval.
 
+## Gate 6: Visual quality review
+
+Use `references/visual-quality-review-gate.md` when a task includes visual quality review, when a project profile exists, or when a compliant screen still looks visually weak.
+
+Manual assertions:
+
+- review basis is `project profile`, `generic review only`, or `not reviewed`
+- release-ready screens that require visual review are not left as `not reviewed`
+- project critical flows satisfy their required judgment information and safe exit rules
+- visual issues are classified as token, component, variant, recipe, content, flow, or implementation gaps
+- blocking gaps are tracked through design-system proposals or explicit follow-up owners
+
 ## Hard failures
 
 - raw colors
@@ -148,6 +160,8 @@ Manual review hard stops unless covered by repo-specific tests:
 
 - missing required states
 - accessibility label violations
+- missing required transition coverage
+- release-ready screen with required visual review marked `not reviewed`
 - failed visual regression without approval
 
 ## Warnings
@@ -157,3 +171,5 @@ Manual review hard stops unless covered by repo-specific tests:
 - primitive token usage in product UI
 - recipe deviation with justification
 - untested optional states
+- generic visual quality review without a project profile
+- non-blocking DS gaps with owners

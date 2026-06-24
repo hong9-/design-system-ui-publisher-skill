@@ -39,6 +39,7 @@ Always follow these rules for product UI:
 - Add accessibility labels, roles, and relationships where required.
 - Run the available design-system checks before finishing.
 - Produce a Design Compliance Report.
+- Record composition, transition coverage, visual quality status, and DS gaps in the report.
 
 Forbidden in product screens unless explicitly allowed:
 
@@ -66,6 +67,8 @@ Choose one task type:
 
 If the task is not UI-related, do not use this skill.
 
+For screen/component tasks, treat the structured task template as the Publishing Brief. If required fields are missing, record missing input instead of inventing it.
+
 ### 2. Read contracts and rules
 
 Read the relevant files from `.design-system/`. If they are absent, use the examples under `assets/` only to initialize or orient the repo; do not treat starter examples as CI proof for product UI.
@@ -83,6 +86,7 @@ Useful references:
 - `references/design-system-extension-proposals.md`, when the UI needs tokens, components, variants, states, or recipes that are missing from the contract
 - `references/compliance-gates.md`
 - `references/review-checklist.md`
+- `references/visual-quality-review-gate.md`, when visual quality review or a project profile is involved
 - `references/platform-common.md`
 - `references/platform-react-web.md`, when target includes web
 - `references/platform-react-native.md`, when target includes native
@@ -103,6 +107,8 @@ For screens, pick the closest recipe:
 Do not invent a new page pattern by default. If no recipe fits, use the closest recipe and document the deviation.
 
 If the closest recipe still requires new visual grammar, stop product implementation and create `.design-system/proposals/<slug>.yaml` from `assets/design-system-extension-proposal.template.yaml`. Continue only after explicit approval or after the user explicitly changes the task into a design-system evolution task.
+
+Before implementation, decompose screens as `Screen > Section > Component > Slot` and verify entry route, action destinations, cancel/back behavior, success path, and error recovery when provided.
 
 ### 4. Implement within the design grammar
 
@@ -205,6 +211,9 @@ End UI tasks with a concise Design Compliance Report containing:
 - forbidden pattern scan
 - required state coverage
 - accessibility coverage
+- component composition and transition contract coverage
+- visual quality review status and review basis
+- DS gaps and proposal links
 - tests/checks run
 - deviations and follow-up items
 
@@ -228,6 +237,8 @@ The bundled scripts cannot prove every design requirement. Do not consider the t
 - missing required states
 - missing icon-only labels
 - failed contrast or touch target checks, when a checker exists
+- missing transition contract coverage for required actions
+- `not reviewed` visual quality status on release-ready screens that require review
 - visual regressions without explicit approval
 
 ## Expected final response
