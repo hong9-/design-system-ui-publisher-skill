@@ -78,7 +78,7 @@ jobs:
           if has_script ds:check; then
             run_script ds:check
           else
-            node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs \
+            node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs \
               --run-checks \
               --require-token-source \
               --require-token-artifacts

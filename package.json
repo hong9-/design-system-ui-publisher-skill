@@ -1,5 +1,5 @@
 {
-  "name": "design-system-publisher-skill",
+  "name": "design-system-ui-publisher-skill",
   "version": "0.1.0",
   "description": "Repo-scoped Codex skill for design-system-governed React and React Native UI publishing.",
   "private": true,
@@ -9,7 +9,7 @@
     "node": ">=20"
   },
   "files": [
-    ".agents/skills/design-system-publisher",
+    ".agents/skills/design-system-ui-publisher",
     "README.md",
     "tests"
   ],

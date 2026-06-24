@@ -19,20 +19,20 @@ Command examples:
 
 ```bash
 <pm> run ds:validate-contract
-node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
+node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs
 ```
 
 Token source and generated artifact file existence are warnings by default. Make them hard failures when the repo should be fully wired:
 
 ```bash
-node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --require-token-source
-node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --require-token-source --require-token-artifacts
+node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs --require-token-source
+node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs --require-token-source --require-token-artifacts
 ```
 
 Validation is strict by default. Starter assets are not accepted as CI proof. Use `--allow-fallback` only for initialization or skill smoke tests:
 
 ```bash
-node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --allow-fallback
+node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs --allow-fallback
 ```
 
 Advanced contract checks can be added later if the repo has richer token metadata:
@@ -58,9 +58,9 @@ Command examples:
 
 ```bash
 <pm> run ds:scan-raw-styles
-node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all
-node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs apps/web --platform web
-node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs apps/mobile --platform native
+node .agents/skills/design-system-ui-publisher/scripts/scan-raw-styles.mjs . --platform all
+node .agents/skills/design-system-ui-publisher/scripts/scan-raw-styles.mjs apps/web --platform web
+node .agents/skills/design-system-ui-publisher/scripts/scan-raw-styles.mjs apps/mobile --platform native
 ```
 
 Platform rule modules:
@@ -88,13 +88,13 @@ Choose `<pm>` from the repo's native package manager: `pnpm`, `yarn`, or `npm`. 
 Generate the compliance report after checks have run:
 
 ```bash
-node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs
+node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs
 ```
 
 The report generator is report-only by default. To use it as a single local orchestrator, opt in:
 
 ```bash
-node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks
+node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs --run-checks
 ```
 
 In run-checks mode, repo-native `ds:validate-contract` and `ds:scan-raw-styles` scripts run when they are present, and the bundled validators still run as built-in design gates so generator flags cannot be bypassed. Custom scripts listed in `manifest.requiredChecks` fail when they are missing or cannot be executed.
@@ -104,7 +104,7 @@ Generated reports are draft scaffolds until the manual sections are completed. A
 For CI, make token source, token config, and generated token artifacts hard failures:
 
 ```bash
-node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts
+node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts
 ```
 
 For pull request workflows, keep permissions read-only and do not move this job to `pull_request_target`; dependency installation and package scripts execute repository-controlled code.

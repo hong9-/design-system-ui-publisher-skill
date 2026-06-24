@@ -49,5 +49,5 @@ Web UI must preserve:
 ```bash
 <pm> run test:a11y
 <pm> run test:visual
-node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform web
+node .agents/skills/design-system-ui-publisher/scripts/scan-raw-styles.mjs . --platform web
 ```

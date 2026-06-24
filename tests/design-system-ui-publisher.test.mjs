@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const skillRoot = path.join(packageRoot, '.agents/skills/design-system-publisher');
+const skillRoot = path.join(packageRoot, '.agents/skills/design-system-ui-publisher');
 const scriptsDir = path.join(skillRoot, 'scripts');
 const assetsDir = path.join(skillRoot, 'assets');
 const referencesDir = path.join(skillRoot, 'references');

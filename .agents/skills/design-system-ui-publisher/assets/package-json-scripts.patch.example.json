@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "ds:validate-contract": "node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs",
+    "ds:validate-contract:init": "node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs --allow-fallback",
+    "ds:scan-raw-styles": "node .agents/skills/design-system-ui-publisher/scripts/scan-raw-styles.mjs . --platform all",
+    "ds:compliance-report": "node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs",
+    "ds:compliance-report:run-checks": "node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs --run-checks",
+    "ds:check": "node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts"
+  }
+}

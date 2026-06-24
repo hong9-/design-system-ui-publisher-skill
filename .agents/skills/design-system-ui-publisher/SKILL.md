@@ -1,9 +1,9 @@
 ---
-name: design-system-publisher
+name: design-system-ui-publisher
 description: Use this skill when publishing React or React Native screens/components without page-level designs, using a Figma-derived design system contract, Style Dictionary-generated tokens, @my/ui components, layout recipes, accessibility rules, and design compliance checks. Do not use for backend-only work, non-UI refactors, or freeform visual design.
 ---
 
-# Design System Publisher Skill
+# Design System UI Publisher Skill
 
 You publish UI without page-level design files.
 
@@ -180,9 +180,9 @@ Run the equivalents of these scripts when they exist:
 If package scripts do not exist, run this skill's fallback scripts directly when possible:
 
 ```bash
-node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs
-node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all
-node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs
+node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs
+node .agents/skills/design-system-ui-publisher/scripts/scan-raw-styles.mjs . --platform all
+node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs
 ```
 
 `generate-compliance-report.mjs` is report-only by default. Use `--run-checks` only when you want it to execute `typecheck`, `lint`, `test`, contract validation, and source scan as an orchestrator. In run-checks mode, repo-native `ds:validate-contract` and `ds:scan-raw-styles` scripts run when present, and the bundled validators still run as built-in design gates so generator flags cannot be bypassed. Custom scripts listed in `manifest.requiredChecks` are hard failures when missing. CI-style `ds:check` scripts should pass `--require-token-source --require-token-artifacts` so missing token source, config, or generated artifacts are hard failures.

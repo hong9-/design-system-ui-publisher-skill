@@ -1,4 +1,4 @@
-# Design System Publisher Skill
+# Design System UI Publisher Skill
 
 This zip contains a repo-scoped Codex skill for publishing React and React Native UI without page-level design files.
 
@@ -31,10 +31,10 @@ style-dictionary.config.mjs
 You can start by copying the examples from:
 
 ```txt
-.agents/skills/design-system-publisher/assets/
+.agents/skills/design-system-ui-publisher/assets/
 ```
 
-Static scan rules are bundled under `.agents/skills/design-system-publisher/assets/platform-rules.*.json`.
+Static scan rules are bundled under `.agents/skills/design-system-ui-publisher/assets/platform-rules.*.json`.
 
 ## Recommended package scripts
 
@@ -43,12 +43,12 @@ Add equivalents of these package-manager-agnostic scripts to your repo when read
 ```json
 {
   "scripts": {
-    "ds:validate-contract": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs",
-    "ds:validate-contract:init": "node .agents/skills/design-system-publisher/scripts/validate-design-contract.mjs --allow-fallback",
-    "ds:scan-raw-styles": "node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform all",
-    "ds:compliance-report": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs",
-    "ds:compliance-report:run-checks": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks",
-    "ds:check": "node .agents/skills/design-system-publisher/scripts/generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts"
+    "ds:validate-contract": "node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs",
+    "ds:validate-contract:init": "node .agents/skills/design-system-ui-publisher/scripts/validate-design-contract.mjs --allow-fallback",
+    "ds:scan-raw-styles": "node .agents/skills/design-system-ui-publisher/scripts/scan-raw-styles.mjs . --platform all",
+    "ds:compliance-report": "node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs",
+    "ds:compliance-report:run-checks": "node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs --run-checks",
+    "ds:check": "node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs --run-checks --require-token-source --require-token-artifacts"
   }
 }
 ```
@@ -59,26 +59,26 @@ Add equivalents of these package-manager-agnostic scripts to your repo when read
 
 ## How to use with Codex
 
-Ask Codex to use the `design-system-publisher` skill for UI work such as:
+Ask Codex to use the `design-system-ui-publisher` skill for UI work such as:
 
 ```txt
-Use the design-system-publisher skill. Create OrderHistoryScreen for web and native using the list-screen recipe. Implement loading, empty, error, and success states. Use only @my/ui components and existing design tokens. Add stories/tests and produce a design compliance report.
+Use the design-system-ui-publisher skill. Create OrderHistoryScreen for web and native using the list-screen recipe. Implement loading, empty, error, and success states. Use only @my/ui components and existing design tokens. Add stories/tests and produce a design compliance report.
 ```
 
 The most important file is:
 
 ```txt
-.agents/skills/design-system-publisher/SKILL.md
+.agents/skills/design-system-ui-publisher/SKILL.md
 ```
 
 The detailed rules live under:
 
 ```txt
-.agents/skills/design-system-publisher/references/
+.agents/skills/design-system-ui-publisher/references/
 ```
 
 Templates and example contracts live under:
 
 ```txt
-.agents/skills/design-system-publisher/assets/
+.agents/skills/design-system-ui-publisher/assets/
 ```

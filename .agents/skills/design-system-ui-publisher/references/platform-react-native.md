@@ -48,5 +48,5 @@ Native UI must preserve:
 ```bash
 <pm> run test:a11y:native
 <pm> run test:visual:native
-node .agents/skills/design-system-publisher/scripts/scan-raw-styles.mjs . --platform native
+node .agents/skills/design-system-ui-publisher/scripts/scan-raw-styles.mjs . --platform native
 ```
