@@ -2,6 +2,8 @@
 
 Use recipes to keep AI-generated screens consistent when page designs are absent.
 
+Prefer a repo-native named recipe when one exists. If no named recipe fits, use `delivery-contract.md` to decompose the screen by content pattern, presentation, and risk profile. Do not force irrelevant sections or states merely to match the closest recipe; record a justified deviation or design-system recipe gap.
+
 ## list-screen
 
 Use for item collections such as orders, notifications, files, messages, products, members, or audit logs.

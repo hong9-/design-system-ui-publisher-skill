@@ -21,6 +21,9 @@ let allowFallback = false;
 let runChecks = false;
 let requireTokenSource = false;
 let requireTokenArtifacts = false;
+let deliveryMode = 'not specified';
+let targetMaturity = 'not specified';
+const changedRoots = [];
 
 function failUsage(message) {
   console.error(`ERROR ${message}`);
@@ -45,6 +48,24 @@ for (let i = 0; i < rawArgs.length; i += 1) {
     runChecks = true;
   } else if (arg === '--no-run-checks') {
     runChecks = false;
+  } else if (arg === '--changed-root') {
+    if (!rawArgs[i + 1] || rawArgs[i + 1].startsWith('--')) failUsage('--changed-root requires a value');
+    changedRoots.push(rawArgs[i + 1]);
+    i += 1;
+  } else if (arg.startsWith('--changed-root=')) {
+    changedRoots.push(arg.slice('--changed-root='.length));
+  } else if (arg === '--delivery-mode') {
+    if (!rawArgs[i + 1] || rawArgs[i + 1].startsWith('--')) failUsage('--delivery-mode requires a value');
+    deliveryMode = rawArgs[i + 1];
+    i += 1;
+  } else if (arg.startsWith('--delivery-mode=')) {
+    deliveryMode = arg.slice('--delivery-mode='.length);
+  } else if (arg === '--target-maturity') {
+    if (!rawArgs[i + 1] || rawArgs[i + 1].startsWith('--')) failUsage('--target-maturity requires a value');
+    targetMaturity = rawArgs[i + 1];
+    i += 1;
+  } else if (arg.startsWith('--target-maturity=')) {
+    targetMaturity = arg.slice('--target-maturity='.length);
   } else if (arg === '--out') {
     if (!rawArgs[i + 1] || rawArgs[i + 1].startsWith('--')) failUsage('--out requires a value');
     out = rawArgs[i + 1];
@@ -59,6 +80,14 @@ for (let i = 0; i < rawArgs.length; i += 1) {
 
 if (!['all', 'web', 'native'].includes(platform)) {
   failUsage(`invalid --platform "${platform}". Expected web, native, or all.`);
+}
+
+if (!['not specified', 'greenfield', 'brownfield-migration'].includes(deliveryMode)) {
+  failUsage(`invalid --delivery-mode "${deliveryMode}". Expected greenfield or brownfield-migration.`);
+}
+
+if (!['not specified', 'contract-ready', 'fixture-ready', 'runtime-ready', 'release-ready'].includes(targetMaturity)) {
+  failUsage(`invalid --target-maturity "${targetMaturity}".`);
 }
 
 if (!runChecks && (requireTokenSource || requireTokenArtifacts)) {
@@ -111,6 +140,17 @@ function resolveOutputPath(value) {
   return resolved;
 }
 
+function resolveChangedRoot(value) {
+  const resolved = path.resolve(cwd, value);
+  if (!isInsideRepo(resolved)) failUsage(`--changed-root must stay inside the repo: ${value}`);
+  if (!fs.existsSync(resolved)) failUsage(`--changed-root does not exist: ${value}`);
+  const real = fs.realpathSync(resolved);
+  if (!isInsidePath(real, cwdRealpath)) {
+    failUsage(`--changed-root must stay inside the repo after resolving symlinks: ${value}`);
+  }
+  return path.relative(cwd, resolved) || '.';
+}
+
 function assertExistingPathInsideRepo(file) {
   const real = fs.realpathSync(file);
   if (!isInsidePath(real, cwdRealpath)) {
@@ -151,9 +191,31 @@ function scriptArgs(packageManager, scriptName, extraArgs = []) {
 }
 
 function formatCommand(command, args) {
-  return [command, ...args]
+  const formatted = [command, ...args]
     .map((part) => (/^[A-Za-z0-9_@%+=:,./-]+$/.test(part) ? part : JSON.stringify(part)))
     .join(' ');
+  return formatted
+    .replaceAll(skillRoot, '[bundled-skill]')
+    .replaceAll(cwd, '.');
+}
+
+const toolVersionCache = new Map();
+
+function readToolVersion(command) {
+  if (toolVersionCache.has(command)) return toolVersionCache.get(command);
+  if (command === 'node') {
+    toolVersionCache.set(command, process.version);
+    return process.version;
+  }
+  const result = spawnSync(command, ['--version'], {
+    cwd,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+    timeout: 5000,
+  });
+  const version = result.status === 0 ? `${result.stdout || result.stderr || ''}`.trim().split(/\r?\n/)[0] : 'not captured';
+  toolVersionCache.set(command, version || 'not captured');
+  return version || 'not captured';
 }
 
 function redactOutput(value) {
@@ -170,6 +232,7 @@ function prepareOutput(value) {
 }
 
 function runCheck(name, command, args, options = {}) {
+  const executedAt = new Date().toISOString();
   const result = spawnSync(command, args, {
     cwd,
     encoding: 'utf8',
@@ -187,22 +250,34 @@ function runCheck(name, command, args, options = {}) {
     name,
     command: formatCommand(command, args),
     critical: options.critical !== false,
+    executed: true,
     skipped: false,
     status,
     output,
+    scope: options.scope || 'repository-wide',
+    roots: options.roots || [],
+    executedAt,
+    toolVersion: readToolVersion(command),
   };
 }
 
-function skipCheck(name, reason) {
+function skipCheck(name, reason, options = {}) {
   return {
     name,
     command: '',
     critical: false,
+    executed: false,
     skipped: true,
     status: null,
     output: reason,
+    scope: options.scope || 'repository-wide',
+    roots: options.roots || [],
+    executedAt: null,
+    toolVersion: null,
   };
 }
+
+const normalizedChangedRoots = [...new Set(changedRoots.map(resolveChangedRoot))];
 
 const packageJson = readPackageJson();
 const packageScripts = packageJson?.scripts || {};
@@ -246,9 +321,14 @@ function failedRequiredCheck(name, reason) {
     name,
     command: '',
     critical: true,
+    executed: false,
     skipped: false,
     status: 1,
     output: reason,
+    scope: 'repository-wide',
+    roots: [],
+    executedAt: null,
+    toolVersion: null,
   };
 }
 
@@ -325,9 +405,27 @@ if (runChecks) {
     '--platform',
     platform,
   ], ['--platform', platform]);
+  if (normalizedChangedRoots.length > 0) {
+    checks.push(runCheck('changed-scope design source scan', 'node', [
+      path.join(scriptDir, 'scan-raw-styles.mjs'),
+      ...normalizedChangedRoots,
+      '--platform',
+      platform,
+    ], {
+      scope: 'changed-scope',
+      roots: normalizedChangedRoots,
+    }));
+  }
 } else {
   checks.push(skipCheck('design contract validation', 'not run by report generator; pass --run-checks to execute checks'));
   checks.push(skipCheck('design source scan', 'not run by report generator; pass --run-checks to execute checks'));
+  if (normalizedChangedRoots.length > 0) {
+    checks.push(skipCheck(
+      'changed-scope design source scan',
+      'not run by report generator; pass --run-checks to execute checks',
+      { scope: 'changed-scope', roots: normalizedChangedRoots }
+    ));
+  }
 }
 
 function statusLabel(check) {
@@ -350,6 +448,11 @@ function formatCheck(check) {
     '',
     `Status: ${statusLabel(check)}`,
     check.command ? `Command: \`${check.command.replace(/`/g, '\\`')}\`` : '',
+    `Scope: ${check.scope}`,
+    `Roots: ${check.roots.length > 0 ? check.roots.join(', ') : check.scope === 'repository-wide' ? '.' : 'not specified'}`,
+    `Executed at: ${check.executedAt || 'not executed'}`,
+    `Exit code: ${check.executed ? check.status : 'not executed'}`,
+    `Tool version: ${check.toolVersion || 'not captured'}`,
     '',
     `${fence}txt`,
     output,
@@ -357,6 +460,42 @@ function formatCheck(check) {
     '',
   ].filter(Boolean).join('\n');
 }
+
+function aggregateScope(scope) {
+  const scoped = checks.filter((check) => check.scope === scope);
+  if (scoped.length === 0 || scoped.every((check) => !check.executed)) return 'NOT RUN';
+  if (scoped.some((check) => check.status !== 0 && !check.skipped)) return 'FAIL';
+  if (scoped.some((check) => !check.executed)) return 'PARTIAL';
+  return 'PASS';
+}
+
+function gitResult(args) {
+  const result = spawnSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    timeout: 5000,
+  });
+  return result.status === 0 ? `${result.stdout || ''}`.trim() : null;
+}
+
+function countPorcelainEntries(value) {
+  if (!value) return 0;
+  const entries = value.split('\0').filter(Boolean);
+  let count = 0;
+  for (let i = 0; i < entries.length; i += 1) {
+    count += 1;
+    const status = entries[i].slice(0, 2);
+    if (status.includes('R') || status.includes('C')) i += 1;
+  }
+  return count;
+}
+
+const gitCommit = gitResult(['rev-parse', 'HEAD']);
+const gitStatus = gitCommit ? gitResult(['status', '--porcelain=v1', '-z']) : null;
+const dirtyEntryCount = gitStatus === null ? null : countPorcelainEntries(gitStatus);
+const worktreeDirty = dirtyEntryCount === null ? 'unknown (Git unavailable)' : dirtyEntryCount > 0 ? 'yes' : 'no';
+const changedScopeResult = aggregateScope('changed-scope');
+const repositoryWideResult = aggregateScope('repository-wide');
 
 const visualQualityProfile = [
   '.design-system/visual-quality-profile.md',
@@ -375,6 +514,35 @@ Generated at: ${now}
 - Task: fill in from PR or agent task
 - Target platforms: web/native as applicable
 - Recipe: fill in selected layout recipe
+- Delivery mode: ${deliveryMode}
+- Target maturity: ${targetMaturity}
+
+## Authority Resolution - Manual Completion Required
+
+- Behavior: TODO
+- Visual: TODO
+- Content: TODO
+- Components: TODO
+- Tokens: TODO
+- Runtime: TODO
+- Data safety: TODO
+- Conflicts or blocking inputs: TODO
+
+## Validation Scope
+
+- Changed roots: ${normalizedChangedRoots.length > 0 ? normalizedChangedRoots.join(', ') : 'not supplied'}
+- Changed-scope current checks: ${changedScopeResult}
+- Repository-wide checks: ${repositoryWideResult}
+- Comparable baseline evidence: not captured by this generator
+- No-new-regression conclusion: not established without comparable baseline evidence
+
+## Evidence Provenance
+
+- Commit: ${gitCommit || 'unavailable'}
+- Worktree dirty: ${worktreeDirty}
+- Dirty entry count: ${dirtyEntryCount ?? 'unavailable'}
+- Generated at: ${now}
+- Artifact freshness: current at generation time; mark stale if relevant sources change later
 
 ## Contract Inputs
 
@@ -387,9 +555,24 @@ Generated at: ${now}
 - manifest required checks: ${requiredChecks.size > 0 ? [...requiredChecks].join(', ') : 'not available'}
 - check execution mode: ${runChecks ? 'run-checks' : 'report-only'}
 
-## Automated Checks
+## Changed-Scope Automated Checks
 
-${checks.map(formatCheck).join('\n')}
+${checks.filter((check) => check.scope === 'changed-scope').map(formatCheck).join('\n') || 'No changed-scope checks configured.'}
+
+## Repository-Wide Automated Checks
+
+${checks.filter((check) => check.scope === 'repository-wide').map(formatCheck).join('\n')}
+
+## Independent Verdicts - Manual Completion Required
+
+Use: pass / pass-with-notes / fail / blocked / not-reviewed / not-applicable.
+
+- Design-system compliance: not-reviewed
+- Behavior-contract coverage: not-reviewed
+- Data safety: not-reviewed
+- Visual-reference fidelity: not-reviewed
+- Runtime parity: not-reviewed
+- Release readiness: not-reviewed
 
 ## Design System Usage - Manual Completion Required
 
@@ -462,7 +645,14 @@ ${checks.map(formatCheck).join('\n')}
 ${checks.filter((check) => !check.skipped).map((check) => check.command).join('\n') || '(no automated checks executed)'}
 \`\`\`
 
-## Results
+## Changed-Scope Results
+
+- Current scoped checks: ${changedScopeResult}
+- New-regression conclusion: not established without comparable baseline evidence
+
+## Repository-Wide Results
+
+- Overall: ${repositoryWideResult}
 
 - Typecheck: ${statusLabel(checks.find((check) => check.name === 'typecheck'))}
 - Lint: ${statusLabel(checks.find((check) => check.name === 'lint'))}

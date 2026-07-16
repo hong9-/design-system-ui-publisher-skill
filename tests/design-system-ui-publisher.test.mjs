@@ -42,6 +42,10 @@ function combinedOutput(result) {
   return `${result.stdout || ''}${result.stderr || ''}`;
 }
 
+function runCommand(command, args, cwd) {
+  return spawnSync(command, args, { cwd, encoding: 'utf8' });
+}
+
 test('skill documents design-system extension proposal workflow', () => {
   const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
   const reference = fs.readFileSync(
@@ -90,6 +94,34 @@ test('skill documents visual quality review without making it a scorecard', () =
   assert.match(reference, /generic review only/);
   assert.doesNotMatch(reference, /finalScore|weighted score|0-100/);
   assert.match(profileTemplate, /Critical Flows/);
+});
+
+test('skill documents delivery authority, maturity, verdicts, and scoped evidence', () => {
+  const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+  const deliveryContract = fs.readFileSync(
+    path.join(referencesDir, 'delivery-contract.md'),
+    'utf8'
+  );
+  const taskTemplate = fs.readFileSync(
+    path.join(assetsDir, 'screen-task.template.yaml'),
+    'utf8'
+  );
+  const reportTemplate = fs.readFileSync(
+    path.join(assetsDir, 'compliance-report.template.md'),
+    'utf8'
+  );
+
+  assert.match(skill, /page-level designs are absent, partial, stale, or non-authoritative/);
+  assert.match(skill, /Do not use this list to resolve product behavior/);
+  assert.match(deliveryContract, /priority: 1/);
+  assert.match(deliveryContract, /pass-with-notes.*, `fail`, `blocked`/s);
+  assert.match(deliveryContract, /does not prove that no regression was introduced/i);
+  assert.match(taskTemplate, /targetMaturity: fixture-ready/);
+  assert.match(taskTemplate, /dataPolicy:\n  sensitivity: public/);
+  assert.doesNotMatch(taskTemplate, /dataSensitivity/);
+  assert.match(reportTemplate, /## Independent Verdicts/);
+  assert.match(reportTemplate, /## Changed-Scope Results/);
+  assert.match(reportTemplate, /## Repository-Wide Results/);
 });
 
 function seedDesignContract(repo, overrides = {}) {
@@ -557,6 +589,29 @@ test('generate-compliance-report rejects output paths outside the repo', () => {
   assert.match(combinedOutput(result), /--out must stay inside the repo/);
 });
 
+test('generate-compliance-report rejects changed roots outside the repo', () => {
+  const repo = makeTempRepo('dsp-report-changed-root-boundary');
+  seedDesignContract(repo);
+
+  const result = runScript('generate-compliance-report.mjs', ['--changed-root', '..'], repo);
+
+  assert.equal(result.status, 2);
+  assert.match(combinedOutput(result), /--changed-root must stay inside the repo/);
+});
+
+test('generate-compliance-report rejects changed roots that symlink outside the repo', () => {
+  const repo = makeTempRepo('dsp-report-changed-root-symlink');
+  const outside = makeTempRepo('dsp-report-changed-root-outside');
+  seedDesignContract(repo);
+  writeFile(path.join(outside, 'Leaked.tsx'), 'export function Leaked(){ return <div />; }\n');
+  fs.symlinkSync(outside, path.join(repo, 'linked'));
+
+  const result = runScript('generate-compliance-report.mjs', ['--changed-root', 'linked'], repo);
+
+  assert.equal(result.status, 2);
+  assert.match(combinedOutput(result), /--changed-root must stay inside the repo after resolving symlinks/);
+});
+
 test('generate-compliance-report includes manual publishing brief review sections', () => {
   const repo = makeTempRepo('dsp-report-brief-sections');
   seedDesignContract(repo);
@@ -569,6 +624,67 @@ test('generate-compliance-report includes manual publishing brief review section
   assert.match(report, /## Transition Contract - Manual Completion Required/);
   assert.match(report, /## Visual Quality Review - Manual Completion Required/);
   assert.match(report, /## Design-System Gaps - Manual Completion Required/);
+  assert.match(report, /## Independent Verdicts - Manual Completion Required/);
+  assert.match(report, /Design-system compliance: not-reviewed/);
+  assert.match(report, /Changed-scope current checks: NOT RUN/);
+  assert.match(report, /Repository-wide checks: NOT RUN/);
+});
+
+test('generate-compliance-report separates changed-scope pass from repository-wide failure', () => {
+  const repo = makeTempRepo('dsp-report-scoped-results');
+  seedDesignContract(repo);
+  writeFile(
+    path.join(repo, 'src/changed/Good.tsx'),
+    'export function Good(){ return <Stack gap="md" />; }\n'
+  );
+  writeFile(
+    path.join(repo, 'src/legacy/Bad.tsx'),
+    'export function Bad(){ return <div style={{ padding: 17 }}>Bad</div>; }\n'
+  );
+
+  const result = runScript(
+    'generate-compliance-report.mjs',
+    ['--run-checks', '--changed-root', 'src/changed', '--target-maturity', 'runtime-ready'],
+    repo
+  );
+  const report = fs.readFileSync(path.join(repo, 'design-compliance-report.generated.md'), 'utf8');
+
+  assert.equal(result.status, 1);
+  assert.match(report, /Target maturity: runtime-ready/);
+  assert.match(report, /Changed-scope current checks: PASS/);
+  assert.match(report, /Repository-wide checks: FAIL/);
+  assert.match(report, /### changed-scope design source scan/);
+  assert.match(report, /Scope: changed-scope/);
+  assert.match(report, /Roots: src\/changed/);
+  assert.match(report, /Exit code: 0/);
+  assert.match(report, /New-regression conclusion: not established without comparable baseline evidence/);
+});
+
+test('generate-compliance-report records git and per-command evidence without dirty paths', () => {
+  const repo = makeTempRepo('dsp-report-provenance');
+  seedDesignContract(repo, {
+    requiredChecks: ['ds:validate-contract', 'ds:scan-raw-styles'],
+  });
+  assert.equal(runCommand('git', ['init'], repo).status, 0);
+  assert.equal(runCommand('git', ['add', '.'], repo).status, 0);
+  assert.equal(runCommand(
+    'git',
+    ['-c', 'user.name=Skill Test', '-c', 'user.email=skill@example.test', 'commit', '-m', 'seed'],
+    repo
+  ).status, 0);
+  const commit = runCommand('git', ['rev-parse', 'HEAD'], repo).stdout.trim();
+
+  const result = runScript('generate-compliance-report.mjs', ['--run-checks'], repo);
+  const report = fs.readFileSync(path.join(repo, 'design-compliance-report.generated.md'), 'utf8');
+
+  assert.equal(result.status, 0, combinedOutput(result));
+  assert.match(report, new RegExp(`Commit: ${commit}`));
+  assert.match(report, /Worktree dirty: no/);
+  assert.match(report, /Dirty entry count: 0/);
+  assert.match(report, /Executed at: \d{4}-\d{2}-\d{2}T/);
+  assert.match(report, /Exit code: 0/);
+  assert.match(report, /Tool version: v\d+/);
+  assert.doesNotMatch(report, /tokens\/source\/tokens\.json.*dirty/i);
 });
 
 test('generate-compliance-report rejects symlinked output parents outside the repo', () => {

@@ -6,6 +6,37 @@
 - Target platforms:
 - Files changed:
 - Recipe:
+- Delivery mode: greenfield / brownfield-migration
+- Target maturity: contract-ready / fixture-ready / runtime-ready / release-ready
+
+## Authority Resolution
+
+- Behavior:
+- Visual:
+- Content:
+- Components:
+- Tokens:
+- Runtime:
+- Data safety:
+- Conflicts or blocking inputs:
+
+## Validation Scope
+
+- Changed roots:
+- Repository-wide checks required:
+- Comparable baseline evidence:
+- Regression claim supported: yes / no
+
+## Independent Verdicts
+
+Use: pass / pass-with-notes / fail / blocked / not-reviewed / not-applicable.
+
+- Design-system compliance:
+- Behavior-contract coverage:
+- Data safety:
+- Visual-reference fidelity:
+- Runtime parity:
+- Release readiness:
 
 ## Design System Usage
 
@@ -78,7 +109,25 @@
 # paste commands here
 ```
 
-## Results
+## Evidence Provenance
+
+- Commit:
+- Worktree dirty:
+- Dirty entry count:
+- Artifact freshness: current / stale / unknown
+
+Record each executed command separately:
+
+| Check | Scope | Roots | Executed at | Exit code | Tool version |
+| --- | --- | --- | --- | --- | --- |
+|  | changed-scope / repository-wide |  |  |  |  |
+
+## Changed-Scope Results
+
+- Current scoped checks:
+- New-regression conclusion: supported by comparable baseline / not established
+
+## Repository-Wide Results
 
 - Typecheck:
 - Lint:
@@ -87,6 +136,19 @@
 - Unit/component tests:
 - Accessibility tests:
 - Visual tests:
+
+## Runtime/Legacy Parity, if applicable
+
+- Data/route/action parity:
+- Side-effect owner:
+- Feature flag/fallback:
+- Rollback/removal readiness:
+
+## Data Safety, if applicable
+
+- Sensitivity:
+- Display-safe projection boundary:
+- Fixture/log/screenshot evidence:
 
 ## Deviations
 

@@ -3,11 +3,47 @@ task:
   target:
     - web
     - native
+  deliveryMode: greenfield
+  contractLevel: structured
+  targetMaturity: fixture-ready
+
+authority:
+  behavior:
+    sources:
+      - ref: product/order-history-requirements.md
+        priority: 1
+        lastReviewedAt: 2026-07-16
+  visual:
+    sources: []
+  content:
+    sources:
+      - ref: product/order-history-requirements.md
+        priority: 1
+        lastReviewedAt: 2026-07-16
+  components:
+    sources:
+      - ref: .design-system/component-spec.json
+        priority: 1
+        lastReviewedAt: 2026-07-16
+  tokens:
+    sources:
+      - ref: tokens/source/tokens.json
+        priority: 1
+        lastReviewedAt: 2026-07-16
+  runtime:
+    sources: []
+  dataSafety:
+    sources: []
 
 screen:
   name: OrderHistoryScreen
   recipe: list-screen
   route: /orders
+
+screenModel:
+  contentPattern: list
+  presentation: pushed-route
+  riskProfile: normal
 
 intent:
   primaryGoal: 사용자가 최근 주문 내역을 확인한다
@@ -29,6 +65,17 @@ data:
     - status
     - totalPrice
 
+dataPolicy:
+  sensitivity: personal
+  projectionBoundary: OrderHistoryViewModel
+  allowedInRouteParams:
+    - orderId
+  allowedInFixtures:
+    - syntheticOrderSummary
+  allowedInLogs: []
+  allowedInScreenshots:
+    - syntheticOrderSummary
+
 states:
   required:
     - loading
@@ -41,6 +88,16 @@ actions:
     label: 주문 상세 보기
   retry:
     label: 다시 시도
+
+behaviorAssertions:
+  - error state exposes retry
+  - item press routes by stable orderId
+
+validationScope:
+  changedRoots:
+    - src/screens/order-history
+  repositoryWideRequired: true
+  comparableBaselineEvidence:
 
 constraints:
   useOnlyDesignSystemComponents: true

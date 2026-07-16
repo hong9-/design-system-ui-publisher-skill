@@ -1,6 +1,6 @@
 # Design System UI Publisher Skill
 
-This zip contains a repo-scoped Codex skill for publishing React and React Native UI without page-level design files.
+This package contains a repo-scoped Codex skill for publishing and auditing React and React Native UI when page-level designs are absent, partial, stale, or non-authoritative.
 
 The skill assumes the team receives a Figma design system guide, not per-page designs. Token source JSON is built through Style Dictionary or an equivalent token build step. When a Figma URL and MCP connection are available, Figma component properties and selected layer names enrich component contracts, slots, variants, states, and layout recipes. Codex or another coding agent then assembles screens/components inside those rules and runs deterministic compliance checks.
 
@@ -57,6 +57,8 @@ Add equivalents of these package-manager-agnostic scripts to your repo when read
 `ds:validate-contract` is strict by default. Use `ds:validate-contract:init` only while bootstrapping starter assets. `ds:compliance-report` is report-only by default; use `ds:check` when CI should execute checks, enforce custom `manifest.requiredChecks`, and hard-fail on missing token source/config/artifacts. In run-checks mode, repo-native `ds:validate-contract` and `ds:scan-raw-styles` scripts are used when defined, and the bundled validators still run as built-in design gates so generator flags such as `--require-token-source` cannot be bypassed. Use `ds:compliance-report:run-checks` for local orchestration before token artifacts are committed. For mixed monorepos, keep Rust, native, or workspace-level checks in the repo's own CI/scripts and let this skill run the design-system gates.
 
 `--platform all` auto-routes platform-specific scan rules by file path, extension, and React Native imports. Ambiguous JSX files are scanned with both web and native rules to avoid false-green mixed repos. Use `--platform web` or `--platform native` when scanning a known single-platform root.
+
+For brownfield work, pass one or more `--changed-root <path>` arguments to add focused raw-style scans while retaining repository-wide checks. The generated report separates those results and records Git provenance plus command-level scope, execution time, exit code, and tool version. A focused PASS is intentionally not reported as proof of no regression without comparable baseline evidence.
 
 ## How to use with Codex
 

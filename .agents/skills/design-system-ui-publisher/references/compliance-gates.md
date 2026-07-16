@@ -101,6 +101,14 @@ In run-checks mode, repo-native `ds:validate-contract` and `ds:scan-raw-styles` 
 
 Generated reports are draft scaffolds until the manual sections are completed. Automated check status alone is not proof that required states, component composition, transition coverage, accessibility behavior, visual quality review, or DS gap classification are complete.
 
+Use repeated `--changed-root <path>` arguments to add current changed-scope raw-style scans while retaining repository-wide checks:
+
+```bash
+node .agents/skills/design-system-ui-publisher/scripts/generate-compliance-report.mjs --run-checks --changed-root apps/web/src/new-screen --changed-root apps/mobile/src/new-screen
+```
+
+Each executed check records scope, roots, execution time, and exit code. The report records the current Git commit and dirty-entry count when Git is available. Changed-scope PASS does not establish that no regression was introduced unless comparable baseline evidence exists, and it never hides a repository-wide failure.
+
 For CI, make token source, token config, and generated token artifacts hard failures:
 
 ```bash

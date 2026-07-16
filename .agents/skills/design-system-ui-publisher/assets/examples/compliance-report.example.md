@@ -5,6 +5,35 @@
 - Task: Create OrderHistoryScreen
 - Target platforms: web, native
 - Recipe: list-screen
+- Delivery mode: greenfield
+- Target maturity: fixture-ready
+
+## Authority Resolution
+
+- Behavior: product/order-history-requirements.md
+- Visual: no authoritative page design
+- Content: product/order-history-requirements.md
+- Components: .design-system/component-spec.json
+- Tokens: tokens/source/tokens.json
+- Runtime: not applicable at fixture-ready
+- Data safety: product order-data policy
+- Conflicts or blocking inputs: none
+
+## Validation Scope
+
+- Changed roots: src/screens/order-history
+- Repository-wide checks required: yes
+- Comparable baseline evidence: none
+- Regression claim supported: no; results describe current checks only
+
+## Independent Verdicts
+
+- Design-system compliance: pass
+- Behavior-contract coverage: pass-with-notes
+- Data safety: pass
+- Visual-reference fidelity: not-applicable
+- Runtime parity: not-applicable
+- Release readiness: not-reviewed
 
 ## Design System Usage
 
@@ -79,13 +108,31 @@
 <pm> run test
 ```
 
-## Results
+## Evidence Provenance
+
+- Commit: example
+- Worktree dirty: no
+- Dirty entry count: 0
+- Artifact freshness: current
+
+## Changed-Scope Results
+
+- Current scoped checks: pass
+- New-regression conclusion: not established without comparable baseline evidence
+
+## Repository-Wide Results
 
 - Typecheck: pass
 - Lint: pass
 - Design contract validation: pass
 - Raw style scan: pass
 - Unit/component tests: pass
+
+## Data Safety
+
+- Sensitivity: personal
+- Display-safe projection boundary: OrderHistoryViewModel
+- Fixture/log/screenshot evidence: synthetic summaries only
 
 ## Deviations
 

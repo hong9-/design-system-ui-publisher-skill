@@ -20,6 +20,16 @@
 - Are web/native differences handled in adapters rather than hidden with brittle abstractions?
 - Are generated files maintainable?
 - Did the compliance report match actual command output?
+- Are authority conflicts resolved by concern rather than by a global source assumption?
+- Does the evidence record each command's scope, execution time, and exit code?
+- Are changed-scope and repository-wide results reported independently?
+
+## Delivery review
+
+- Is the target maturity explicit?
+- Are applicable verdicts `pass` or `pass-with-notes` for that maturity?
+- Is `fail` reserved for completed checks that did not meet requirements, and `blocked` for checks that could not complete?
+- Is any no-regression claim backed by comparable baseline evidence?
 
 ## Hard stop
 

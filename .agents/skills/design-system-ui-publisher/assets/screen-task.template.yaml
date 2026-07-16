@@ -3,11 +3,35 @@ task:
   target:
     - web
     - native
+  deliveryMode: greenfield
+  contractLevel: structured
+  targetMaturity: fixture-ready
+
+authority:
+  behavior:
+    sources: []
+  visual:
+    sources: []
+  content:
+    sources: []
+  components:
+    sources: []
+  tokens:
+    sources: []
+  runtime:
+    sources: []
+  dataSafety:
+    sources: []
 
 screen:
   name: ExampleScreen
   recipe: list-screen
   route: /example
+
+screenModel:
+  contentPattern: list
+  presentation: pushed-route
+  riskProfile: normal
 
 transitionContract:
   entryRoute: /example
@@ -44,6 +68,14 @@ data:
     - title
     - status
 
+dataPolicy:
+  sensitivity: public
+  projectionBoundary:
+  allowedInRouteParams: []
+  allowedInFixtures: []
+  allowedInLogs: []
+  allowedInScreenshots: []
+
 states:
   required:
     - loading
@@ -55,6 +87,13 @@ actions:
   primary:
     label: 계속하기
     destination:
+
+behaviorAssertions: []
+
+validationScope:
+  changedRoots: []
+  repositoryWideRequired: false
+  comparableBaselineEvidence:
   retry:
     label: 다시 시도
     destination:

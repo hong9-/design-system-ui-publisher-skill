@@ -10,11 +10,35 @@ task:
   target:
     - web
     - native
+  deliveryMode: greenfield
+  contractLevel: structured
+  targetMaturity: fixture-ready
+
+authority:
+  behavior:
+    sources: []
+  visual:
+    sources: []
+  content:
+    sources: []
+  components:
+    sources: []
+  tokens:
+    sources: []
+  runtime:
+    sources: []
+  dataSafety:
+    sources: []
 
 screen:
   name: ExampleScreen
   recipe: list-screen
   route: /example
+
+screenModel:
+  contentPattern: list
+  presentation: pushed-route
+  riskProfile: normal
 
 transitionContract:
   entryRoute: /example
@@ -42,6 +66,10 @@ data:
     - title
     - status
 
+dataPolicy:
+  sensitivity: public
+  projectionBoundary:
+
 states:
   required:
     - loading
@@ -54,6 +82,13 @@ designSystemInputs:
   tokens: []
   variants: []
   missing: []
+
+behaviorAssertions: []
+
+validationScope:
+  changedRoots: []
+  repositoryWideRequired: false
+  comparableBaselineEvidence:
 
 visualQualityReview:
   basis: not reviewed
@@ -80,8 +115,10 @@ constraints:
 - visual quality review status
 - design-system gap list
 - list of commands run
+- authority, target maturity, independent verdicts, and validation scope
+- per-command evidence with scope, execution time, and exit code
 - list of deviations
 
 ## Agent behavior
 
-The agent should prefer existing components and patterns in the repo. When a needed component is missing, it should choose the closest approved component rather than inventing a new visual pattern. If no approved component works, it should document a design-system gap instead of implementing a one-off custom style.
+The agent should prefer existing components and patterns in the repo. When a needed component is missing, it should choose the closest approved component rather than inventing a new visual pattern. If no approved component works, it should document a design-system gap instead of implementing a one-off custom style. Follow `delivery-contract.md` when authorities conflict or validation scope must be interpreted.

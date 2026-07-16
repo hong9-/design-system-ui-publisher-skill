@@ -1,17 +1,17 @@
 ---
 name: design-system-ui-publisher
-description: Use this skill when publishing React or React Native screens/components without page-level designs, using a Figma-derived design system contract, Style Dictionary-generated tokens, @my/ui components, layout recipes, accessibility rules, and design compliance checks. Do not use for backend-only work, non-UI refactors, or freeform visual design.
+description: Use this skill when publishing or auditing React or React Native screens/components from a design-system contract when page-level designs are absent, partial, stale, or non-authoritative. It uses generated tokens, approved UI components, layout recipes, accessibility rules, scoped validation, and design compliance evidence. Do not use for backend-only work, non-UI refactors, freeform visual design, or pixel-precise implementation from an authoritative page design.
 ---
 
 # Design System UI Publisher Skill
 
-You publish UI without page-level design files.
+You publish UI when page-level design files are unavailable or cannot fully govern the product contract.
 
 Your job is **not** to invent visual design. Your job is to assemble screens and components using the Figma-derived design system contract.
 
 ## Source of truth
 
-Treat these as the source of truth, in this order:
+Use this order only for design-system grammar such as components, tokens, variants, and recipes:
 
 1. `.design-system/design-system-manifest.json`, if present
 2. `.design-system/component-spec.json`, if present
@@ -20,6 +20,8 @@ Treat these as the source of truth, in this order:
 5. generated design token packages, for example `packages/design-tokens`
 6. shared UI package, for example `packages/ui` or `@my/ui`
 7. starter examples in this skill's `assets/` directory, for initialization only
+
+Do not use this list to resolve product behavior, content, visual references, runtime ownership, or data safety. Resolve those concerns independently from the Publishing Brief. If sources conflict and no authority is declared, record blocking input instead of silently choosing one. Follow `references/delivery-contract.md` for authority, maturity, verdict, and evidence rules.
 
 Committed token source becomes generated design token artifacts. Figma Variables may be imported during explicit sync tasks, then committed as raw/normalized token source. Figma component properties become TypeScript props. Meaningful Figma layer names become slots. Figma usage rules become lint/test/compliance gates.
 
@@ -56,18 +58,15 @@ Forbidden in product screens unless explicitly allowed:
 
 ### 1. Classify the task
 
-Choose one task type:
-
-- `create-screen`
-- `create-component`
-- `update-screen`
-- `update-component`
-- `audit-design-compliance`
-- `sync-design-contract`
+Choose one task type: `create-screen`, `create-component`, `update-screen`, `update-component`, `audit-design-compliance`, or `sync-design-contract`.
 
 If the task is not UI-related, do not use this skill.
 
 For screen/component tasks, treat the structured task template as the Publishing Brief. If required fields are missing, record missing input instead of inventing it.
+
+Before implementation, record delivery mode, target maturity, authority by concern, changed roots, and whether repository-wide checks are required. Use the values and shapes in `references/delivery-contract.md`.
+
+Use `dataPolicy.sensitivity` as the canonical sensitive-data field. `screenModel.riskProfile: sensitive` may activate the same review, but does not replace the data policy.
 
 ### 2. Read contracts and rules
 
@@ -87,6 +86,7 @@ Useful references:
 - `references/compliance-gates.md`
 - `references/review-checklist.md`
 - `references/visual-quality-review-gate.md`, when visual quality review or a project profile is involved
+- `references/delivery-contract.md`, for authority, screen model, maturity, verdict, and scoped evidence
 - `references/platform-common.md`
 - `references/platform-react-web.md`, when target includes web
 - `references/platform-react-native.md`, when target includes native
@@ -95,7 +95,7 @@ Useful references:
 
 For `sync-design-contract`, skip recipe selection and follow `references/figma-import.md`.
 
-For screens, pick the closest recipe:
+For screens, prefer a repo-native named recipe. Otherwise pick the closest bundled recipe:
 
 - `list-screen`
 - `form-screen`
@@ -104,7 +104,7 @@ For screens, pick the closest recipe:
 - `settings-screen`
 - `dashboard-screen`
 
-Do not invent a new page pattern by default. If no recipe fits, use the closest recipe and document the deviation.
+Do not invent a new page pattern by default. If a named recipe does not fit, decompose the screen by content pattern, presentation, and risk profile as described in `references/delivery-contract.md`. Do not force irrelevant sections or states solely to satisfy the closest recipe; record a justified deviation or recipe gap.
 
 If the closest recipe still requires new visual grammar, stop product implementation and create `.design-system/proposals/<slug>.yaml` from `assets/design-system-extension-proposal.template.yaml`. Continue only after explicit approval or after the user explicitly changes the task into a design-system evolution task.
 
@@ -205,6 +205,7 @@ Use `--require-token-source` and `--require-token-artifacts` when a repo should 
 End UI tasks with a concise Design Compliance Report containing:
 
 - task scope
+- delivery mode, target maturity, authority resolution, and unresolved conflicts
 - recipe used
 - components used
 - token compliance
@@ -215,6 +216,8 @@ End UI tasks with a concise Design Compliance Report containing:
 - visual quality review status and review basis
 - DS gaps and proposal links
 - tests/checks run
+- independent verdicts, using the values in `references/delivery-contract.md`
+- separate changed-scope/repository-wide results and per-command evidence provenance
 - deviations and follow-up items
 
 Use `assets/compliance-report.template.md` as the report shape.
@@ -250,3 +253,5 @@ For implementation tasks, summarize:
 3. which checks passed or could not be run
 4. where the compliance report is located
 5. remaining deviations, if any
+
+Do not describe a task as complete when the target maturity requires a verdict that is `fail`, `blocked`, or `not-reviewed`. A current changed-scope PASS proves only that those scoped checks pass; it does not prove that no regression was introduced unless comparable baseline evidence exists.
