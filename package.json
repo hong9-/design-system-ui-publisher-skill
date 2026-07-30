@@ -4,7 +4,7 @@
   "description": "Repo-scoped Codex skill for design-system-governed React and React Native UI publishing.",
   "private": true,
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=20"
   },

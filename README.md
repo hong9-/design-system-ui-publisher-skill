@@ -87,3 +87,7 @@ Templates and example contracts live under:
 ```
 
 Use `assets/visual-quality-profile.template.md` if a project needs product-specific visual quality review rules.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
