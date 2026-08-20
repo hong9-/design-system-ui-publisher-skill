@@ -1,0 +1,9 @@
+.DS_Store
+node_modules/
+coverage/
+*.tgz
+npm-debug.log*
+.env
+.env.*
+!.env.example
+design-compliance-report.generated.md

@@ -5,6 +5,14 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "keywords": [
+    "codex",
+    "design-system",
+    "react",
+    "react-native",
+    "style-dictionary",
+    "ui-compliance"
+  ],
   "engines": {
     "node": ">=20"
   },

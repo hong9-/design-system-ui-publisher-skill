@@ -4,6 +4,15 @@ This package contains a repo-scoped Codex skill for publishing and auditing Reac
 
 The skill assumes the team receives a Figma design system guide, not per-page designs. Token source JSON is built through Style Dictionary or an equivalent token build step. When a Figma URL and MCP connection are available, Figma component properties and selected layer names enrich component contracts, slots, variants, states, and layout recipes. Codex or another coding agent then assembles screens/components inside those rules and runs deterministic compliance checks.
 
+## Project status
+
+This repository is an early-stage `0.1.x` skill package. Its contracts, templates, and command-line flags may change before a stable release. The bundled test suite covers contract validation, source scanning, report generation, path boundaries, and output redaction.
+
+## Requirements
+
+- Node.js 20 or newer
+- Codex with repository-scoped skill discovery through `.agents/skills/`
+
 ## Install
 
 Copy the `.agents` directory from this package into the root of your repository:
@@ -87,6 +96,16 @@ Templates and example contracts live under:
 ```
 
 Use `assets/visual-quality-profile.template.md` if a project needs product-specific visual quality review rules.
+
+## Verify this package
+
+Run the repository test suite before copying or publishing the skill:
+
+```bash
+npm test
+```
+
+The test suite uses only Node.js built-in modules, so dependency installation is not required.
 
 ## License
 

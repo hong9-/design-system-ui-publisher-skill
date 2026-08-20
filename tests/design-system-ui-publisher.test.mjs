@@ -549,7 +549,7 @@ test('generate-compliance-report redacts and safely fences command output', () =
       'console.log("API_TOKEN=abc123");',
       'console.log("\\"API_TOKEN\\":\\"jsonsecret\\"");',
       'console.log("API_TOKEN: colonsecret");',
-      'console.log("ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD");',
+      'console.log(["ghp", "abcdefghijklmnopqrstuvwxyz1234567890ABCD"].join("_"));',
       'console.log("```");',
       '',
     ].join('\n')
@@ -571,7 +571,7 @@ test('generate-compliance-report redacts and safely fences command output', () =
   assert.doesNotMatch(report, /API_TOKEN=abc123/);
   assert.doesNotMatch(report, /jsonsecret/);
   assert.doesNotMatch(report, /colonsecret/);
-  assert.doesNotMatch(report, /ghp_abcdefghijklmnopqrstuvwxyz/);
+  assert.doesNotMatch(report, new RegExp(["ghp", "abcdefghijklmnopqrstuvwxyz"].join("_")));
   assert.match(report, /API_TOKEN=\[REDACTED\]/);
   assert.match(report, /"API_TOKEN":\[REDACTED\]/);
   assert.match(report, /API_TOKEN: \[REDACTED\]/);
